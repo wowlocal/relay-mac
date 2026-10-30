@@ -6,7 +6,7 @@ url=git@github.com:telegramdesktop/libtgvoip
 	url = git@github.com:macosswift/sparkle.git
 [submodule "submodules/telegram-ios"]
 	path = submodules/telegram-ios
-	url = git@github.com:TelegramMessenger/Telegram-iOS.git
+	url = https://github.com/wowlocal/mattermost-tg-client
 [submodule "submodules/rlottie"]
 	path = submodules/rlottie
 	url = git@github.com:macosswift/rlottie.git

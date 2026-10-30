@@ -38,6 +38,9 @@ import ChatUI
 import PeerInfoUI
 import StoriesUI
 import ChatListUI
+import MattermostSync
+import TelegramMediaUtils
+import RelayUI
 import WalletContext
 import CrashRecoveryUI
 import StarsUI
@@ -346,6 +349,9 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
         
         if let containerUrl = ApiEnvironment.containerURL {
             self.containerUrl = containerUrl.path
+            #if DEBUG
+            RelayDebugSnapshot.install(directory: containerUrl.path)
+            #endif
             setupLogger(containerPath: containerUrl.path)
             recoverFromCrashOnLaunchIfNeeded(containerPath: containerUrl.path)
         }
@@ -448,6 +454,10 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
         
 
         telegramUIDeclareEncodables()
+        mattermostDeclareEncodables()
+        relayFetchResource = { postbox, resource in
+            return mattermostFetchResource(postbox: postbox, resource: resource)
+        }
         
         initializeMimeStore()
         

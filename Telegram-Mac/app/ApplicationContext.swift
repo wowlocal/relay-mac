@@ -14,6 +14,7 @@ import PrivateCallScreen
 import DetectSpeech
 import WalletContext
 import AppKit
+import RelayUI
 
 
 /// Opens a community — a container peer, not a conversation — as its chat list in the left controller.
@@ -121,7 +122,7 @@ final class UnauthorizedApplicationContext {
     let sharedContext: SharedAccountContext
     
     private let updatesDisposable: DisposableSet = DisposableSet()
-    private let authController: AuthController
+    private let authController: AuthController?
     
     var rootView: NSView {
         return rootController.view
@@ -143,11 +144,18 @@ final class UnauthorizedApplicationContext {
         }
 
 
-        self.authController = AuthController(account, sharedContext: sharedContext, otherAccountPhoneNumbers: otherAccountPhoneNumbers)
         self.account = account
         self.window = window
         self.sharedContext = sharedContext
-        self.rootController = MajorNavigationController(AuthController.self, self.authController, window)
+        if MattermostBackend.isEnabled {
+            self.authController = nil
+            let loginController = RelayLoginController(account: account, accountManager: sharedContext.accountManager)
+            self.rootController = MajorNavigationController(ViewController.self, loginController, window)
+        } else {
+            let authController = AuthController(account, sharedContext: sharedContext, otherAccountPhoneNumbers: otherAccountPhoneNumbers)
+            self.authController = authController
+            self.rootController = MajorNavigationController(AuthController.self, authController, window)
+        }
         rootController._frameRect = NSMakeRect(0, 0, window.frame.width, window.frame.height)
 
         self.modal = AuthModalController(rootController)
@@ -158,7 +166,7 @@ final class UnauthorizedApplicationContext {
     }
     
     func applyExternalLoginCode(_ code: String) {
-        authController.applyExternalLoginCode(code)
+        authController?.applyExternalLoginCode(code)
     }
     
     deinit {

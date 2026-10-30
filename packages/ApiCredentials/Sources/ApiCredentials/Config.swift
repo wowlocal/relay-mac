@@ -9,10 +9,10 @@ public final class ApiEnvironment {
     }
     
     public static var bundleId: String {
-        return "ru.keepcoder.Telegram"
+        return "org.relaychat.RelayMac"
     }
     public static var teamId: String {
-        return "6N38VWS5BX"
+        return "RELAYDEV"
     }
     
     
@@ -22,7 +22,14 @@ public final class ApiEnvironment {
         let containerUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)?.appendingPathComponent(prefix)
         if let containerUrl = containerUrl {
             try? FileManager.default.createDirectory(at: containerUrl, withIntermediateDirectories: true, attributes: nil)
-            return containerUrl
+            if FileManager.default.isWritableFile(atPath: containerUrl.path) {
+                return containerUrl
+            }
+        }
+        if let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+            let fallback = support.appendingPathComponent(bundleId).appendingPathComponent(prefix)
+            try? FileManager.default.createDirectory(at: fallback, withIntermediateDirectories: true, attributes: nil)
+            return fallback
         }
         return nil
     }

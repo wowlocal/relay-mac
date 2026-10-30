@@ -12,6 +12,9 @@ import TelegramContextShare
 #else
 import PrivateCallScreen
 import TelegramContext
+#if !SHARE
+import MattermostSync
+#endif
 #endif
 
 
@@ -251,6 +254,9 @@ class SharedAccountContext {
         self.displayUpgradeProgress = displayUpgradeProgress
         self.appEncryption = Atomic(value: appEncryption)
         #if !SHARE
+        if MattermostBackend.isEnabled {
+            MattermostSync.startLifecycle(accountManager: accountManager, rootPath: rootPath, encryptionParameters: encryptionParameters)
+        }
         self.devicesContext = DevicesContext(accountManager)
         self.accountManager.mediaBox.fetchCachedResourceRepresentation = { (resource, representation) -> Signal<CachedMediaResourceRepresentationResult, NoError> in
             return fetchCachedSharedResourceRepresentation(accountManager: accountManager, resource: resource, representation: representation)
@@ -448,7 +454,17 @@ class SharedAccountContext {
                                 }
                                 self.activeAccountsValue!.accounts.append((account.id, account, accountRecord.2))
                                 self.managedAccountDisposables.set(self.updateAccountBackupData(account: account).start(), forKey: account.id)
-                                account.resetStateManagement()
+                                #if SHARE
+                                if !MattermostBackend.isEnabled {
+                                    account.resetStateManagement()
+                                }
+                                #else
+                                if MattermostBackend.isEnabled {
+                                    MattermostSync.startAccount(account)
+                                } else {
+                                    account.resetStateManagement()
+                                }
+                                #endif
                                 hadUpdates = true
                             }
                         } else {
@@ -501,7 +517,20 @@ class SharedAccountContext {
                     }
                     
                     if self.activeAccountsValue!.primary == nil && self.activeAccountsValue!.currentAuth == nil {
+                        #if DEBUG && !SHARE
+                        if MattermostBackend.isEnabled && MattermostDebugLogin.isRequested {
+                            MattermostDebugLogin.createAccountIfNeeded(accountManager: accountManager, rootPath: rootPath, encryptionParameters: encryptionParameters, fallback: { [weak self] in
+                                guard let self, self.activeAccountsValue?.primary == nil, self.activeAccountsValue?.currentAuth == nil else {
+                                    return
+                                }
+                                self.beginNewAuth(testingEnvironment: false)
+                            })
+                        } else {
+                            self.beginNewAuth(testingEnvironment: false)
+                        }
+                        #else
                         self.beginNewAuth(testingEnvironment: false)
+                        #endif
                     }
                     
                     if (authAccount != nil || self.activeAccountsValue!.primary != nil) && !self.cleaningUpAccounts {
