@@ -59,9 +59,21 @@ else
         curl -sSfL -o "$INSTALLER_DIR/install.sh" https://storage.yandexcloud.net/yandexcloud-yc/install.sh
         bash "$INSTALLER_DIR/install.sh" -i "$HOME/yandex-cloud" -n
     fi
+    # An OAuth token rather than `yc init`'s browser login, which waits for a redirect to 127.0.0.1 that a browser behind
+    # a proxy or VPN may never make.
     if ! "$YC" iam create-token >/dev/null 2>&1; then
-        echo "== yc init: open the link it prints, log in to Yandex, paste the token; pick any cloud and folder"
-        "$YC" init
+        OAUTH_URL="https://oauth.yandex.ru/authorize?response_type=token&client_id=1a6990aa636648e9b2ef855fa7bec2fb"
+        echo "== log in to Yandex Cloud"
+        echo "A browser page opens ($OAUTH_URL)."
+        echo "Log in with the Yandex account whose cloud holds the bucket $BUCKET, allow access, copy the token it shows."
+        open "$OAUTH_URL" 2>/dev/null || true
+        read -r -s -p "Paste the token here (not shown), then Enter: " YC_OAUTH
+        echo
+        [ -n "$YC_OAUTH" ] || { echo "no token"; exit 1; }
+        "$YC" config set token "$YC_OAUTH"
+        unset YC_OAUTH
+        "$YC" iam create-token >/dev/null 2>&1 || { echo "Yandex Cloud refused that token"; "$YC" config unset token; exit 1; }
+        echo "logged in"
     fi
 
     echo "== looking for the bucket $BUCKET"
