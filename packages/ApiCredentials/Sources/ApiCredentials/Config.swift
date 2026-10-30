@@ -56,6 +56,10 @@ public final class ApiEnvironment {
         return containerUrl
     }
     
+    public static var keychainScope: String {
+        return "relay." + prefix
+    }
+
     public static var group: String {
         return teamId + "." + bundleId
     }

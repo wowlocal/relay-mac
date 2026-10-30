@@ -1001,7 +1001,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				27A35BDB2F03C73E0001B63D /* TelegramShare.appex in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3681,7 +3680,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				275E4B3F2EEC24B700BC1A68 /* PBXTargetDependency */,
 			);
 			name = Telegram;
 			packageProductDependencies = (
@@ -4824,7 +4822,7 @@
 				CLANG_WARN_INT_CONVERSION = NO;
 				CLANG_WARN_SUSPICIOUS_MOVE = NO;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_ENTITLEMENTS = "Telegram-Mac/Telegram-Sandbox.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "Telegram-Mac/Relay.entitlements";
 				CODE_SIGN_IDENTITY = "";
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -4874,7 +4872,8 @@
 				OTHER_LDFLAGS = "-ObjC";
 				OTHER_SWIFT_FLAGS = "$(inherited)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.relaychat.RelayMac;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = Telegram;
+				PRODUCT_NAME = Relay;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = PRODUCTION;
 				SWIFT_COMPILATION_MODE = wholemodule;
@@ -5048,7 +5047,7 @@
 				CLANG_WARN_INT_CONVERSION = NO;
 				CLANG_WARN_SUSPICIOUS_MOVE = NO;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_ENTITLEMENTS = "Telegram-Mac/Telegram-Mac.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "Telegram-Mac/Relay.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = YES;
 				CODE_SIGN_STYLE = Automatic;
@@ -5100,7 +5099,8 @@
 				OTHER_LDFLAGS = "-ObjC";
 				OTHER_SWIFT_FLAGS = "$(inherited)";
 				PRODUCT_BUNDLE_IDENTIFIER = org.relaychat.RelayMac;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = Telegram;
+				PRODUCT_NAME = Relay;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_COMPILATION_MODE = singlefile;

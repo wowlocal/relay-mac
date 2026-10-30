@@ -381,7 +381,7 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
         
         self.containerUrl = containerUrl.path
 
-        try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: ApiEnvironment.group, processRole: .mainApp, biometricKeychainService: walletBiometricKeychainService, keychainScope: ApiEnvironment.prefix == "debug" ? "debug" : nil), privateAccessGroup: { ApiEnvironment.group })
+        try! PasscodeEnvironment.shared.configure(PasscodeConfiguration(appGroupIdentifier: ApiEnvironment.group, processRole: .mainApp, biometricKeychainService: walletBiometricKeychainService, keychainScope: ApiEnvironment.keychainScope), privateAccessGroup: { ApiEnvironment.group })
         
         TempBox.initializeShared(basePath: self.containerUrl, processType: "app", launchSpecificId: arc4random64())
         
