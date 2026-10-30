@@ -13,7 +13,8 @@
 #   3. Upload of the zip and appcast.xml with curl's AWS SigV4 (no aws CLI), settings from
 #      ~/.relay-secrets/macos-release.env (S3_BUCKET, S3_ENDPOINT, S3_REGION, S3_PREFIX, AWS_ACCESS_KEY_ID,
 #      AWS_SECRET_ACCESS_KEY; the same bucket and keys as Snippets' Distribution/.env, prefix relay). Without that file
-#      the appcast is made but nothing is uploaded. Then the tag relay-mac-<version>-<build> is pushed.
+#      the appcast is made but nothing is uploaded. Then the tag relay-mac-<version>-<build> is pushed and
+#      tools/relay-mac-github-release.sh makes the GitHub release with a notarized DMG.
 #
 # Run in a GUI session (codesign). Log: build/relay-mac-release.log, ending with exit=N.
 set -uo pipefail
@@ -134,4 +135,8 @@ curl -sf "${DOWNLOAD_PREFIX}appcast.xml" | grep -q "<sparkle:version>$BUILD</spa
 TAG="relay-mac-$VERSION-$BUILD"
 git tag "$TAG" && git push -q origin "$TAG" || echo "warning: tag $TAG not pushed"
 echo "released $VERSION ($BUILD): ${DOWNLOAD_PREFIX}$ZIP_NAME"
+
+echo "== github release"
+bash tools/relay-mac-github-release.sh build/Relay.app | tail -1 | grep -q "exit=0" || fail "GitHub release (build/relay-mac-github-release.log)"
+grep "^released:" build/relay-mac-github-release.log
 echo "exit=0"

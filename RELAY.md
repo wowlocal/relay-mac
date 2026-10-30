@@ -19,6 +19,7 @@ Quick reference:
 - Release (GUI session): `RELAY_VERSION=x.y.z tools/relay-mac-release.sh` builds, notarizes, writes the appcast and
   uploads to `macos-releases/relay/`; `tools/relay-mac-publish.sh` uploads a built release again;
   `tools/relay-mac-bucket-keys.sh [--paste]` puts the bucket keys into `~/.relay-secrets/macos-release.env`
+  and `tools/relay-mac-github-release.sh` (run by the release) publishes the GitHub release with a notarized DMG
 
 Not Telegram: don't call a build of this Telegram, don't use Telegram's logo, don't use Telegram's API credentials
 for anything that talks to Telegram (Relay doesn't: with the Mattermost backend every network request is parked).
