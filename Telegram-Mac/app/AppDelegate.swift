@@ -351,6 +351,7 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
             self.containerUrl = containerUrl.path
             #if DEBUG
             RelayDebugSnapshot.install(directory: containerUrl.path)
+            self.installRelayDebugRemote(directory: containerUrl.path)
             #endif
             setupLogger(containerPath: containerUrl.path)
             recoverFromCrashOnLaunchIfNeeded(containerPath: containerUrl.path)
@@ -1769,3 +1770,54 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
         self.authContextValue?.applyExternalLoginCode(code)
     }
 }
+
+#if DEBUG
+private var relayDebugLastPeerId: PeerId?
+
+extension AppDelegate {
+    func installRelayDebugRemote(directory: String) {
+        RelayDebugRemote.install(directory: directory)
+        RelayDebugRemote.register("snapshot", { _, completion in
+            DistributedNotificationCenter.default().postNotificationName(Notification.Name("org.relaychat.RelayMac.debug.snapshot"), object: nil, userInfo: nil, deliverImmediately: true)
+            completion(true, nil, [:])
+        })
+        RelayDebugRemote.register("state", { [weak self] _, completion in
+            guard let context = self?.contextValue?.context else {
+                completion(true, nil, ["authorized": false])
+                return
+            }
+            let navigation = context.bindings.rootNavigation()
+            var extra: [String: Any] = ["authorized": true, "accountPeerId": "\(context.account.peerId.toInt64())", "controller": String(describing: type(of: navigation.controller))]
+            if let peerId = relayDebugLastPeerId {
+                extra["lastOpenedPeerId"] = "\(peerId.toInt64())"
+            }
+            completion(true, nil, extra)
+        })
+        RelayDebugRemote.register("open-chat", { [weak self] command, completion in
+            guard let context = self?.contextValue?.context, let query = command["query"] else {
+                completion(false, "no account or query", [:])
+                return
+            }
+            let _ = (context.engine.contacts.searchLocalPeers(query: query) |> take(1) |> deliverOnMainQueue).start(next: { peers in
+                let titles = peers.compactMap { $0.peer }.map { ($0.id, $0._asPeer().displayTitle) }
+                guard let match = titles.first(where: { $0.1.lowercased() == query.lowercased() }) ?? titles.first else {
+                    completion(false, "no chat matches \(query)", [:])
+                    return
+                }
+                relayDebugLastPeerId = match.0
+                navigateToChat(navigation: context.bindings.rootNavigation(), context: context, chatLocation: .peer(match.0))
+                completion(true, nil, ["peerId": "\(match.0.toInt64())", "title": match.1, "candidates": titles.map { $0.1 }])
+            })
+        })
+        RelayDebugRemote.register("send", { [weak self] command, completion in
+            guard let context = self?.contextValue?.context, let text = command["text"], let peerId = relayDebugLastPeerId else {
+                completion(false, "no account, text or opened chat", [:])
+                return
+            }
+            let _ = (enqueueMessages(account: context.account, peerId: peerId, messages: [.message(text: text, attributes: [], inlineStickers: [:], mediaReference: nil, threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])]) |> deliverOnMainQueue).start(next: { ids in
+                completion(true, nil, ["messageIds": ids.map { $0.map { "\($0.id)" } ?? "nil" }])
+            })
+        })
+    }
+}
+#endif

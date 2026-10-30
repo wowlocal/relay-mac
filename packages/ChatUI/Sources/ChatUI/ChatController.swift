@@ -8217,7 +8217,8 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
         
     
         
-        let updating: Signal<Bool, NoError> = context.account.stateManager.isUpdating |> mapToSignal { isUpdating in
+        let isUpdating: Signal<Bool, NoError> = MattermostBackend.isEnabled ? context.account.externalIsUpdating.get() : context.account.stateManager.isUpdating
+        let updating: Signal<Bool, NoError> = isUpdating |> mapToSignal { isUpdating in
             return isUpdating ? .single(isUpdating) |> delay(1.0, queue: .mainQueue()) : .single(isUpdating)
         }
         

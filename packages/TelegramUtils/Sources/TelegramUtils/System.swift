@@ -14,7 +14,7 @@ import TelegramTheme
 #endif
 
 
-public let appName = "Telegram"
+public let appName = MattermostBackend.isEnabled ? "Relay" : "Telegram"
 public let kMediaImageExt = "jpg";
 public let kMediaGifExt = "mov";
 public let kMediaVideoExt = "mp4";

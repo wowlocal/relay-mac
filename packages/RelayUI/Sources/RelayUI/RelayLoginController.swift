@@ -151,6 +151,25 @@ public func RelayLoginController(account: UnauthorizedAccount, accountManager: A
         return .fail(.none)
     }
 
+    #if DEBUG
+    RelayDebugRemote.register("login", { command, completion in
+        updateState { current in
+            var current = current
+            current.server = command["server"] ?? current.server
+            current.login = command["login"] ?? current.login
+            current.password = command["password"] ?? current.password
+            current.mfa = command["mfa"] ?? current.mfa
+            return current
+        }
+        let _ = logIn()
+        completion(true, nil, [:])
+    })
+    RelayDebugRemote.register("login-state", { _, completion in
+        let state = stateValue.with { $0 }
+        completion(true, nil, ["isLoading": state.isLoading, "needsMFA": state.needsMFA, "error": state.error ?? ""])
+    })
+    #endif
+
     //TODOLANG
     let controller = InputDataController(dataSignal: signal, title: "Relay", validateData: { _ in
         return logIn()
