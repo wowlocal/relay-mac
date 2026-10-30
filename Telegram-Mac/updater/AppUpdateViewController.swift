@@ -767,8 +767,10 @@ private var updaterSource: UpdaterSource? = nil
 
 func updater_resetWithUpdaterSource(_ source: UpdaterSource, force: Bool = true) {
     var source = source
-    if MattermostBackend.isEnabled, case let .internal(context) = source {
-        source = .external(context: context)
+    if MattermostBackend.isEnabled {
+        // Only the appcast (Telegram's internal source reads Telegram's update channel). The external driver doesn't use
+        // the context, and a source differing only by it would make a new driver while the old one keeps downloading.
+        source = .external(context: nil)
     }
     let state = stateValue.with { $0 }
     switch state.loadingState {
@@ -778,6 +780,12 @@ func updater_resetWithUpdaterSource(_ source: UpdaterSource, force: Bool = true)
             resetUpdater()
         }
         return
+    case .loading, .unarchiving, .installing:
+        // A check now would start a second download of the same update beside the running one (Relay 1.0.0 had four,
+        // their progress summed past the file's size).
+        if MattermostBackend.isEnabled {
+            return
+        }
     default:
         break
     }

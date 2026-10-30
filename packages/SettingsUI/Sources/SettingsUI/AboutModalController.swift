@@ -3,8 +3,13 @@ import TGUIKit
 import Localization
 import TelegramTheme
 import TelegramUtils
+import TelegramCore
 
 public var APP_VERSION_STRING: String {
+    if MattermostBackend.isEnabled {
+        // Relay: "1.0.2 (28)". The suffix below says Beta in every Relay build: packages don't get the app's STABLE flag.
+        return "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? "1") (\(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "0"))"
+    }
     var vText = "\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] ?? "1").\(Bundle.main.infoDictionary?["CFBundleVersion"] ?? "0")"
     
     
@@ -30,7 +35,10 @@ fileprivate class AboutModalView : Control {
         formatter.dateFormat = "yyyy"
         
         
-        let copyrightLayout = TextViewLayout(.initialize(string: "Copyright © 2016 - \(formatter.string(from: Date(timeIntervalSinceReferenceDate: Date.timeIntervalSinceReferenceDate))) TELEGRAM MESSENGER", color: theme.colors.grayText, font: .normal(.text)), alignment: .center)
+        let year = formatter.string(from: Date(timeIntervalSinceReferenceDate: Date.timeIntervalSinceReferenceDate))
+        //TODOLANG
+        let copyrightText = MattermostBackend.isEnabled ? "Based on Telegram for macOS, © 2016 - \(year) Telegram Messenger, GPLv2" : "Copyright © 2016 - \(year) TELEGRAM MESSENGER"
+        let copyrightLayout = TextViewLayout(.initialize(string: copyrightText, color: theme.colors.grayText, font: .normal(.text)), alignment: .center)
         copyrightLayout.measure(width:frameRect.width - 40)
         
         
@@ -47,7 +55,8 @@ fileprivate class AboutModalView : Control {
         
         
 
-        _ = attr.append(string: strings().aboutDescription, color: theme.colors.text, font: .normal(.text))
+        //TODOLANG
+        _ = attr.append(string: MattermostBackend.isEnabled ? "A Mattermost client for macOS." : strings().aboutDescription, color: theme.colors.text, font: .normal(.text))
         
         let descLayout = TextViewLayout(attr, alignment: .center)
         descLayout.measure(width:frameRect.width - 40)
