@@ -46,8 +46,11 @@ PY
 }
 
 if [ "${1:-}" = "--paste" ]; then
-    read -r -p "AWS_ACCESS_KEY_ID: " RELAY_KEY_ID
-    read -r -s -p "AWS_SECRET_ACCESS_KEY (not shown): " RELAY_SECRET
+    echo "A key pair for the bucket $BUCKET: Snippets' Distribution/.env (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY),"
+    echo "or a new static access key: console.yandex.cloud -> the folder with the bucket -> Service accounts -> Create"
+    echo "(name $SA_NAME, role storage.uploader) -> open it -> Create new key -> Static access key."
+    read -r -p "AWS_ACCESS_KEY_ID (key ID): " RELAY_KEY_ID
+    read -r -s -p "AWS_SECRET_ACCESS_KEY (secret key, not shown): " RELAY_SECRET
     echo
     [ -n "$RELAY_KEY_ID" ] && [ -n "$RELAY_SECRET" ] || { echo "both are needed"; exit 1; }
 else
@@ -59,21 +62,18 @@ else
         curl -sSfL -o "$INSTALLER_DIR/install.sh" https://storage.yandexcloud.net/yandexcloud-yc/install.sh
         bash "$INSTALLER_DIR/install.sh" -i "$HOME/yandex-cloud" -n
     fi
-    # An OAuth token rather than `yc init`'s browser login, which waits for a redirect to 127.0.0.1 that a browser behind
-    # a proxy or VPN may never make.
+    # `yc init` logs in through the browser, which must come back to 127.0.0.1. An OAuth token is no way around it:
+    # Yandex Cloud refuses OAuth tokens issued after 2026-06-01 ("not supported for IAM token exchange"), and
+    # `yc config set token` puts the token into the name of its log file.
     if ! "$YC" iam create-token >/dev/null 2>&1; then
-        OAUTH_URL="https://oauth.yandex.ru/authorize?response_type=token&client_id=1a6990aa636648e9b2ef855fa7bec2fb"
-        echo "== log in to Yandex Cloud"
-        echo "A browser page opens ($OAUTH_URL)."
-        echo "Log in with the Yandex account whose cloud holds the bucket $BUCKET, allow access, copy the token it shows."
-        open "$OAUTH_URL" 2>/dev/null || true
-        read -r -s -p "Paste the token here (not shown), then Enter: " YC_OAUTH
-        echo
-        [ -n "$YC_OAUTH" ] || { echo "no token"; exit 1; }
-        "$YC" config set token "$YC_OAUTH"
-        unset YC_OAUTH
-        "$YC" iam create-token >/dev/null 2>&1 || { echo "Yandex Cloud refused that token"; "$YC" config unset token; exit 1; }
-        echo "logged in"
+        echo "== yc init: Enter opens the browser; log in with the Yandex account whose cloud holds $BUCKET"
+        "$YC" init || true
+        if ! "$YC" iam create-token >/dev/null 2>&1; then
+            echo "Not logged in to Yandex Cloud. Make the key in the console instead and run this with --paste:"
+            echo "  console.yandex.cloud -> the folder with the bucket $BUCKET -> Service accounts -> Create:"
+            echo "  name $SA_NAME, role storage.uploader -> open it -> Create new key -> Static access key"
+            exit 1
+        fi
     fi
 
     echo "== looking for the bucket $BUCKET"
