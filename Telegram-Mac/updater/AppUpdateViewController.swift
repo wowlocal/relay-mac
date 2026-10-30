@@ -732,7 +732,9 @@ private func cancelStagedUpdate() {
 }
 
 private func resetUpdater() {
-    
+    if MattermostBackend.isEnabled {
+        return
+    }
     #if !GITHUB
         let update:()->Void = {
             let state = stateValue.with { $0.loadingState }
@@ -763,6 +765,9 @@ private func resetUpdater() {
 private var updaterSource: UpdaterSource? = nil
 
 func updater_resetWithUpdaterSource(_ source: UpdaterSource, force: Bool = true) {
+    if MattermostBackend.isEnabled {
+        return
+    }
     let state = stateValue.with { $0 }
     switch state.loadingState {
     case .readyToInstall:
