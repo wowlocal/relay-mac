@@ -5,7 +5,9 @@
 #   1. Release build (CFBundleVersion = commit count of HEAD, so every release is newer; RELAY_VERSION sets the
 #      marketing version), stripped copy, Developer ID signature with the hardened runtime, notarization (App Store
 #      Connect API key in ~/.relay-secrets/asc), stapled ticket, zip.
-#   2. build/updates/ keeps every released zip; Sparkle 2's generate_appcast writes appcast.xml from them, signed with
+#   2. build/updates/ keeps every released zip and its release notes (Relay-<version>-<build>.html: RELAY_NOTES, or
+#      the "Relay for macOS:" commit subjects since the last relay-mac-* tag). Every item needs a description: Relay up
+#      to 1.0.1 (22) crashes on an update without one. Sparkle 2's generate_appcast writes appcast.xml from them, signed with
 #      Relay's EdDSA key (~/.relay-secrets/sparkle/relay-mac-ed25519.key, its public half is SUPublicEDKey). No deltas:
 #      the app's Sparkle is 1.21, which can't apply Sparkle 2's delta format.
 #   3. Upload of the zip and appcast.xml with curl's AWS SigV4 (no aws CLI), settings from
@@ -78,6 +80,25 @@ mkdir -p build/updates
 rm -f "build/updates/$ZIP_NAME"
 ditto -c -k --keepParent build/Relay.app "build/updates/$ZIP_NAME"
 
+echo "== release notes"
+NOTES_FILE="build/updates/Relay-$VERSION-$BUILD.html"
+PREVIOUS_TAG="$(git describe --tags --abbrev=0 --match 'relay-mac-*' 2>/dev/null || true)"
+RELAY_NOTES="${RELAY_NOTES:-}" PREVIOUS_TAG="$PREVIOUS_TAG" python3 -I - "$NOTES_FILE" <<'PY' || fail "release notes"
+import html, os, subprocess, sys
+notes = os.environ["RELAY_NOTES"].strip()
+if notes:
+    lines = [line.strip("-• ").strip() for line in notes.splitlines() if line.strip()]
+else:
+    tag = os.environ["PREVIOUS_TAG"]
+    log = subprocess.run(["git", "log", "--format=%s"] + ([f"{tag}..HEAD"] if tag else []), capture_output=True, text=True, check=True).stdout
+    prefix = "Relay for macOS: "
+    lines = [s[len(prefix):] for s in log.splitlines() if s.startswith(prefix)]
+    lines = [s[:1].upper() + s[1:] for s in lines] or ["Fixes and improvements."]
+with open(sys.argv[1], "w") as f:
+    f.write("<ul>" + "".join(f"<li>{html.escape(line)}</li>" for line in lines) + "</ul>\n")
+PY
+cat "$NOTES_FILE"
+
 echo "== appcast"
 if [ -f "$ENV_FILE" ]; then
     set -a
@@ -92,6 +113,8 @@ DOWNLOAD_PREFIX="$S3_ENDPOINT/$S3_BUCKET/$S3_PREFIX/"
 "$SPARKLE_BIN/generate_appcast" --ed-key-file "$ED_KEY" --download-url-prefix "$DOWNLOAD_PREFIX" --maximum-deltas 0 build/updates \
     || fail "generate_appcast"
 grep -q "<sparkle:version>$BUILD</sparkle:version>" build/updates/appcast.xml || fail "appcast has no item for $BUILD"
+[ "$(grep -c '<item>' build/updates/appcast.xml)" = "$(grep -c '<description>' build/updates/appcast.xml)" ] \
+    || fail "an appcast item has no description (Relay up to 1.0.1 crashes on it)"
 
 if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
     echo "no upload keys ($ENV_FILE): build/updates/$ZIP_NAME and build/updates/appcast.xml are ready, nothing uploaded"

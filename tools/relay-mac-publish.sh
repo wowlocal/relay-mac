@@ -16,6 +16,8 @@ set +a
 PREFIX="${S3_ENDPOINT:-https://storage.yandexcloud.net}/${S3_BUCKET:-macos-releases}/${S3_PREFIX:-relay}/"
 APPCAST=build/updates/appcast.xml
 [ -f "$APPCAST" ] || fail "no $APPCAST (run tools/relay-mac-release.sh)"
+# Relay up to 1.0.1 (22) crashes on an update whose item has no description.
+[ "$(grep -c '<item>' "$APPCAST")" = "$(grep -c '<description>' "$APPCAST")" ] || fail "an appcast item has no description"
 upload() {
     curl --silent --show-error --fail --aws-sigv4 "aws:amz:${S3_REGION:-ru-central1}:s3" --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
         --header "Content-Type: $2" --upload-file "$1" "$PREFIX$(basename "$1")" || fail "upload of $(basename "$1")"

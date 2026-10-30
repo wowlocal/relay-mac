@@ -32,6 +32,7 @@ final class TelegramUpdater : NSObject, SUUpdaterPrivate {
 
 extension SUAppcastItem {
     var updateText: String {
+        let itemDescription: String = self.itemDescription ?? ""
         var updateText = (itemDescription.html2Attributed?.string ?? itemDescription).replacingOccurrences(of: "<[^>]+>", with: "", options: .regularExpression, range: nil)
         while let range = updateText.range(of: "   ") {
             updateText = updateText.replacingOccurrences(of: "   ", with: "  ", options: [], range: range)
@@ -46,7 +47,7 @@ extension SUAppcastItem {
     }
     
     var versionTitle: String {
-        return "Version \(self.displayVersionString!) (\(self.versionString!))"
+        return "Version \(self.displayVersionString ?? "") (\(self.versionString ?? ""))"
     }
 }
 
