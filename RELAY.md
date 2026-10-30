@@ -16,6 +16,9 @@ Quick reference:
 - Sign (GUI session): `tools/relay-mac-sign.sh [path/to/Relay.app]`
 - Debug remote: `xcrun swiftc -O -o /tmp/rmr tools/relay-mac-remote.swift && /tmp/rmr action=state`
 - Link a local package to the app: `tools/relay-add-package.py <path> <product>`
+- Release (GUI session): `RELAY_VERSION=x.y.z tools/relay-mac-release.sh` builds, notarizes, writes the appcast and
+  uploads to `macos-releases/relay/`; `tools/relay-mac-publish.sh` uploads a built release again;
+  `tools/relay-mac-bucket-keys.sh [--paste]` puts the bucket keys into `~/.relay-secrets/macos-release.env`
 
 Not Telegram: don't call a build of this Telegram, don't use Telegram's logo, don't use Telegram's API credentials
 for anything that talks to Telegram (Relay doesn't: with the Mattermost backend every network request is parked).
