@@ -7426,6 +7426,12 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
         var currentThreadId: MessageId?
         
         chatInteraction.openReplyThread = { [weak self] messageId, isChannelPost, modalProgress, mode in
+            if MattermostBackend.isEnabled {
+                let thread = ChatReplyThreadMessage(peerId: messageId.peerId, threadId: Int64(messageId.id), channelMessageId: nil, isChannelPost: false, isForumPost: true, isMonoforumPost: false, maxMessage: nil, maxReadIncomingMessageId: nil, maxReadOutgoingMessageId: nil, unreadCount: 0, initialFilledHoles: IndexSet(), initialAnchor: .automatic, isNotAvailable: false)
+                let focusTarget: ChatFocusTarget? = mode.originId != messageId ? .init(messageId: mode.originId) : nil
+                self?.navigationController?.push(ChatAdditionController(context: context, chatLocation: .thread(thread), mode: .thread(mode: .replies(origin: messageId)), focusTarget: focusTarget, initialAction: nil, chatLocationContextHolder: Atomic(value: nil)))
+                return
+            }
             let signal:Signal<ThreadInfo, FetchChannelReplyThreadMessageError>
                 
             if modalProgress {

@@ -39,6 +39,7 @@ import PeerInfoUI
 import StoriesUI
 import ChatListUI
 import MattermostSync
+import MattermostPush
 import TelegramMediaUtils
 import RelayUI
 import WalletContext
@@ -456,6 +457,7 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
 
         telegramUIDeclareEncodables()
         mattermostDeclareEncodables()
+        MattermostSessionKeychain.service = "org.relaychat.mattermost.session." + ApiEnvironment.prefix
         relayFetchResource = { postbox, resource in
             return mattermostFetchResource(postbox: postbox, resource: resource)
         }
@@ -1830,6 +1832,31 @@ extension AppDelegate {
                 return
             }
             completion(true, nil, [:])
+        })
+        RelayDebugRemote.register("thread", { [weak self] _, completion in
+            guard let context = self?.contextValue?.context, let peerId = relayDebugLastPeerId else {
+                completion(false, "no account or opened chat", [:])
+                return
+            }
+            let _ = (context.account.postbox.transaction { transaction -> (MessageId, Int32, String)? in
+                var found: (MessageId, Int32, String)?
+                transaction.scanTopMessages(peerId: peerId, namespace: Namespaces.Message.Cloud, limit: 200, { message in
+                    if let attribute = message.attributes.first(where: { $0 is ReplyThreadMessageAttribute }) as? ReplyThreadMessageAttribute, attribute.count > 0 {
+                        found = (message.id, attribute.count, message.text)
+                        return false
+                    }
+                    return true
+                })
+                return found
+            } |> deliverOnMainQueue).start(next: { found in
+                guard let found else {
+                    completion(false, "no post with replies in the last 200", [:])
+                    return
+                }
+                let thread = ChatReplyThreadMessage(peerId: found.0.peerId, threadId: Int64(found.0.id), channelMessageId: nil, isChannelPost: false, isForumPost: true, isMonoforumPost: false, maxMessage: nil, maxReadIncomingMessageId: nil, maxReadOutgoingMessageId: nil, unreadCount: 0, initialFilledHoles: IndexSet(), initialAnchor: .automatic, isNotAvailable: false)
+                context.bindings.rootNavigation().push(ChatAdditionController(context: context, chatLocation: .thread(thread), mode: .thread(mode: .replies(origin: found.0)), focusTarget: nil, initialAction: nil, chatLocationContextHolder: Atomic(value: nil)))
+                completion(true, nil, ["root": "\(found.0.id)", "replies": found.1, "text": String(found.2.prefix(80))])
+            })
         })
         RelayDebugRemote.register("send", { [weak self] command, completion in
             guard let context = self?.contextValue?.context, let text = command["text"], let peerId = relayDebugLastPeerId else {
