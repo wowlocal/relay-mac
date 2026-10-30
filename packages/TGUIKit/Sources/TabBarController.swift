@@ -141,6 +141,10 @@ public class TabBarController: ViewController, TabViewDelegate {
     public func select(index:Int) -> Void {
         if index != self.genericView.tabView.selectedIndex {
             genericView.tabView.setSelectedIndex(index, respondToDelegate: true, animated: false)
+        } else if current == nil, index < count {
+            // The tab view starts at index 0 with no controller shown, so selecting the first tab must show it too
+            // (Relay's first tab is Chats: Contacts and Calls are hidden).
+            didChange(selected: tab(at: index), index: index)
         }
     }
     

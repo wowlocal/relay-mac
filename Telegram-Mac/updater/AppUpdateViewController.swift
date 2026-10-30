@@ -197,7 +197,7 @@ private func appUpdateEntries(state: AppUpdateState) -> [InputDataEntry] {
         entries.append(.general(sectionId: sectionId, index: index, value: .none, error: nil, identifier: _id_check_for_updates, data: InputDataGeneralData(name: strings().appUpdateCheckForUpdates, color: theme.colors.accent, icon: nil, type: .none, viewType: .singleItem, action: nil)))
         index += 1
         
-        entries.append(.desc(sectionId: sectionId, index: index, text: .plain(strings().appUpdateUptodate), data: InputDataGeneralTextData(detectBold: false, viewType: .textBottomItem)))
+        entries.append(.desc(sectionId: sectionId, index: index, text: .plain(MattermostBackend.isEnabled ? "You have the latest version of Relay." : strings().appUpdateUptodate), data: InputDataGeneralTextData(detectBold: false, viewType: .textBottomItem)))
         index += 1
     case let .unarchiving(item):
         entries.append(.general(sectionId: sectionId, index: index, value: .none, error: nil, identifier: _id_unarchiving, data: InputDataGeneralData(name: strings().appUpdateUnarchiving, color: theme.colors.grayText, icon: nil, type: .none, viewType: .singleItem, action: nil)))
@@ -205,7 +205,7 @@ private func appUpdateEntries(state: AppUpdateState) -> [InputDataEntry] {
         
         currentItem = item
     case let .readyToInstall(item):
-        entries.append(.general(sectionId: sectionId, index: index, value: .none, error: nil, identifier: _id_install_update, data: InputDataGeneralData(name: strings().updateUpdateTelegram, color: theme.colors.accent, icon: nil, type: .none, viewType: .singleItem, action: nil)))
+        entries.append(.general(sectionId: sectionId, index: index, value: .none, error: nil, identifier: _id_install_update, data: InputDataGeneralData(name: relayUpdateButtonText(), color: theme.colors.accent, icon: nil, type: .none, viewType: .singleItem, action: nil)))
         index += 1
         
         currentItem = item
@@ -823,3 +823,9 @@ private func trySwitchUpdaterBetweenSources() {
 
 #endif
 
+
+/// The install button's text: Telegram's says "Update Telegram".
+func relayUpdateButtonText() -> String {
+    //TODOLANG
+    return MattermostBackend.isEnabled ? "Update Relay" : strings().updateUpdateTelegram
+}

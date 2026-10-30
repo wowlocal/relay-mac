@@ -76,7 +76,7 @@ final class UpdateTabView : Control {
         progressView.progressColor = theme.colors.underSelectedColor
         isInstalling = false
         
-        let layout = TextViewLayout(.initialize(string: strings().updateUpdateTelegram, color: theme.colors.underSelectedColor, font: .medium(.title)))
+        let layout = TextViewLayout(.initialize(string: relayUpdateButtonText(), color: theme.colors.underSelectedColor, font: .medium(.title)))
         layout.measure(width: max(280, frame.width))
         textView.update(layout)
         
