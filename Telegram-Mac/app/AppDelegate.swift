@@ -1828,6 +1828,8 @@ extension AppDelegate {
                 context.bindings.mainViewController.showPreferences()
             case "chats":
                 context.bindings.mainViewController.showChatList()
+            case "threads":
+                context.bindings.mainViewController.showThreads()
             default:
                 completion(false, "unknown screen", [:])
                 return

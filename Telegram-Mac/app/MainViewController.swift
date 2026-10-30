@@ -1,6 +1,7 @@
 import Cocoa
 import TGUIKit
 import TelegramCore
+import RelayUI
 import InAppSettings
 import Postbox
 import SwiftSignalKit
@@ -369,6 +370,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     let navigation: NavigationViewController
     let tabController:TabBarController = TabBarController()
     let contacts:NavigationViewController
+    private let relayThreads: NavigationViewController?
     let settings:AccountViewController
     private let phoneCalls:RecentCallsViewController
     private let layoutDisposable:MetaDisposable = MetaDisposable()
@@ -394,6 +396,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         tabController.view.frame = bounds
         self.navigation.frame = bounds
         self.contacts.frame = bounds
+        self.relayThreads?.frame = bounds
         updateController.updateLayout(context.layout, parentSize: size, isChatList: true)
         layoutConnectingStatusView()
     }
@@ -415,6 +418,8 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         
         self.contacts.applyAppearOnLoad = false
         self.contacts._frameRect = self._frameRect
+        self.relayThreads?.applyAppearOnLoad = false
+        self.relayThreads?._frameRect = self._frameRect
 
         tabController._frameRect = self._frameRect
         self.navigation._frameRect = self._frameRect
@@ -456,6 +461,10 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         tabController.add(tab: TabBadgeItem(context, controller: navigation, image: theme.icons.tab_chats, selectedImage: theme.icons.tab_chats_active, longHoverHandler: { [weak self] control in
             self?.showFastChatSettings(control)
         }))
+        
+        if let relayThreads {
+            tabController.add(tab: TabItem(image: relayThreadsTabIcon(theme.colors.grayIcon), selectedImage: relayThreadsTabIcon(theme.colors.accentIcon), controller: relayThreads))
+        }
         
         tabController.add(tab: TabAllBadgeItem(context, image: theme.icons.tab_settings, selectedImage: theme.icons.tab_settings_active, controller: settings, longHoverHandler: { [weak self] control in
             self?.showFastSettings(control)
@@ -687,6 +696,10 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
             
             tabController.replace(tab: tabController.tab(at: index).withUpdatedImages(theme.icons.tab_chats, theme.icons.tab_chats_active), at: index)
             index += 1
+            if relayThreads != nil {
+                tabController.replace(tab: tabController.tab(at: index).withUpdatedImages(relayThreadsTabIcon(theme.colors.grayIcon), relayThreadsTabIcon(theme.colors.accentIcon)), at: index)
+                index += 1
+            }
             tabController.replace(tab: tabController.tab(at: index).withUpdatedImages(theme.icons.tab_settings, theme.icons.tab_settings_active), at: index)
         }
         self.previousTheme = theme
@@ -836,7 +849,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     }
     
     var settingsIndex: Int {
-        return chatIndex + 1
+        return chatIndex + 1 + (relayThreads != nil ? 1 : 0)
     }
     
     
@@ -879,6 +892,12 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
     func showChatList() {
        self.tabController.select(index: self.chatIndex)
     }
+
+    func showThreads() {
+        if relayThreads != nil {
+            self.tabController.select(index: self.chatIndex + 1)
+        }
+    }
     
     override var responderPriority: HandlerPriority {
         return context.layout == .single ? .medium : .low
@@ -898,6 +917,7 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
 
         self.chatList = ChatListController(context, mode: .plain)
         self.contacts = NavigationViewController(ContactsController(context), context.window)
+        self.relayThreads = MattermostBackend.isEnabled ? NavigationViewController(RelayThreadsController(context: context), context.window) : nil
         self.settings = AccountViewController(context)
         self.phoneCalls = RecentCallsViewController(context)
         self.navigation = NavigationViewController(self.chatList, context.window)
@@ -917,4 +937,22 @@ class MainViewController: TelegramGenericViewController<MainController_View> {
         filterMenuDisposable.dispose()
         connectingStatusDisposable.dispose()
     }
+}
+
+private func relayThreadsTabIcon(_ color: NSColor) -> CGImage {
+    let side: CGFloat = 30
+    let scale: CGFloat = 2
+    let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(side * scale), pixelsHigh: Int(side * scale), bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+    rep.size = NSSize(width: side, height: side)
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+    let configuration = NSImage.SymbolConfiguration(pointSize: 19, weight: .regular)
+    if let symbol = NSImage(systemSymbolName: "bubble.left.and.text.bubble.right", accessibilityDescription: nil)?.withSymbolConfiguration(configuration) {
+        let rect = NSRect(x: (side - symbol.size.width) / 2, y: (side - symbol.size.height) / 2, width: symbol.size.width, height: symbol.size.height)
+        symbol.draw(in: rect)
+        color.set()
+        rect.fill(using: .sourceAtop)
+    }
+    NSGraphicsContext.restoreGraphicsState()
+    return rep.cgImage!
 }

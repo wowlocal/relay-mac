@@ -14,6 +14,7 @@ import MattermostSyncCore
 public struct RelayUIHooks {
     public var openChat: (any AccountContextProtocol, PeerId) -> Void = { _, _ in }
     public var push: (any AccountContextProtocol, ViewController) -> Void = { _, _ in }
+    public var openThread: (any AccountContextProtocol, PeerId, Int64) -> Void = { _, _, _ in }
 
     public static var shared = RelayUIHooks()
 }

@@ -4,6 +4,7 @@ import Postbox
 import TelegramCore
 import SwiftSignalKit
 import ChatListUI
+import ChatUI
 import RelayUI
 import CrashReports
 import ApiCredentials
@@ -75,6 +76,11 @@ func installChatListUIHooks() {
     }
     RelayUIHooks.shared.openChat = { context, peerId in
         navigateToChat(navigation: context.bindings.rootNavigation(), context: context.concrete, chatLocation: .peer(peerId))
+    }
+    RelayUIHooks.shared.openThread = { context, peerId, threadId in
+        let thread = ChatReplyThreadMessage(peerId: peerId, threadId: threadId, channelMessageId: nil, isChannelPost: false, isForumPost: true, isMonoforumPost: false, maxMessage: nil, maxReadIncomingMessageId: nil, maxReadOutgoingMessageId: nil, unreadCount: 0, initialFilledHoles: IndexSet(), initialAnchor: .automatic, isNotAvailable: false)
+        let root = MessageId(peerId: peerId, namespace: Namespaces.Message.Cloud, id: Int32(clamping: threadId))
+        context.bindings.rootNavigation().push(ChatAdditionController(context: context.concrete, chatLocation: .thread(thread), mode: .thread(mode: .replies(origin: root)), focusTarget: nil, initialAction: nil, chatLocationContextHolder: Atomic(value: nil)))
     }
     RelayUIHooks.shared.push = { context, controller in
         context.bindings.rootNavigation().push(controller)
