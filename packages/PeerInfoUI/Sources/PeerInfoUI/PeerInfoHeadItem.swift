@@ -57,7 +57,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
         if !(item.peerView.peers[item.peerView.peerId] is TelegramSecretChat) {
             items.append(ActionItem(text: strings().peerInfoActionMessage, color: item.accentColor, image: theme.icons.profile_message, animation: .menu_show_message, action: arguments.sendMessage))
         }
-        if peer.canCall, !isServicePeer(peer) && !peer.rawDisplayTitle.isEmpty {
+        if MattermostFeatures.calls, peer.canCall, !isServicePeer(peer) && !peer.rawDisplayTitle.isEmpty {
             if let cachedData = item.peerView.cachedData as? CachedUserData, cachedData.voiceCallsAvailable {
                 items.append(ActionItem(text: strings().peerInfoActionCall, color: item.accentColor, image: theme.icons.profile_call, animation: .menu_call, action: {
                     arguments.call(false)
@@ -80,7 +80,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
         
         
         
-        if peer.canCall && peer.id != item.context.peerId, !isServicePeer(peer) && !peer.rawDisplayTitle.isEmpty, isVideoPossible {
+        if MattermostFeatures.calls, peer.canCall && peer.id != item.context.peerId, !isServicePeer(peer) && !peer.rawDisplayTitle.isEmpty, isVideoPossible {
             if let cachedData = item.peerView.cachedData as? CachedUserData, cachedData.videoCallsAvailable {
                 items.append(ActionItem(text: strings().peerInfoActionVideoCall, color: item.accentColor, image: theme.icons.profile_video_call, animation: .menu_video_call, action: {
                     arguments.call(true)
@@ -222,14 +222,14 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
         
         
         if let cachedData = item.peerView.cachedData as? CachedChannelData, let peer = peer as? TelegramChannel {
-            if peer.groupAccess.canMakeVoiceChat {
+            if MattermostFeatures.calls, peer.groupAccess.canMakeVoiceChat {
                 let isLiveStream = peer.isChannel || peer.flags.contains(.isGigagroup)
                 items.append(ActionItem(text: isLiveStream ? strings().peerInfoActionLiveStream : strings().peerInfoActionVoiceChat, color: item.accentColor, image: theme.icons.profile_voice_chat, animation: .menu_video_chat, action: {
                     arguments.makeVoiceChat(cachedData.activeCall, callJoinPeerId: cachedData.callJoinPeerId)
                 }))
             }
         } else if let cachedData = item.peerView.cachedData as? CachedGroupData {
-            if peer.groupAccess.canMakeVoiceChat {
+            if MattermostFeatures.calls, peer.groupAccess.canMakeVoiceChat {
                 items.append(ActionItem(text: strings().peerInfoActionVoiceChat, color: item.accentColor, image: theme.icons.profile_voice_chat, animation: .menu_call, action: {
                     arguments.makeVoiceChat(cachedData.activeCall, callJoinPeerId: cachedData.callJoinPeerId)
                 }))
@@ -326,7 +326,7 @@ private func actionItems<Context: AccountContextProtocol>(item: PeerInfoHeadItem
             }
         }
         if let cachedData = item.peerView.cachedData as? CachedChannelData {
-            if peer.groupAccess.canMakeVoiceChat {
+            if MattermostFeatures.calls, peer.groupAccess.canMakeVoiceChat {
                 let isLiveStream = peer.isChannel || peer.flags.contains(.isGigagroup)
                 items.append(ActionItem(text: isLiveStream ? strings().peerInfoActionLiveStream : strings().peerInfoActionVoiceChat, color: item.accentColor, image: theme.icons.profile_voice_chat, animation: .menu_video_chat, action: {
                     arguments.makeVoiceChat(cachedData.activeCall, callJoinPeerId: cachedData.callJoinPeerId)

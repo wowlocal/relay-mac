@@ -6684,7 +6684,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                     ChatNavigationHooks.shared.selectGroupCallJoiner(context, peerId, join)
                 }
             } else if let peer = self?.chatInteraction.peer {
-                if peer.groupAccess.canMakeVoiceChat {
+                if MattermostFeatures.calls, peer.groupAccess.canMakeVoiceChat {
                     verifyAlert_button(for: context.window, information: strings().voiceChatChatStartNew, ok: strings().voiceChatChatStartNewOK, successHandler: { _ in
                         ChatUIHooks.shared.createVoiceChat(context, peerId)
                     })
@@ -9539,7 +9539,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
 
                     let canDeleteForAll: Bool? = (peerView.cachedData as? CachedChannelData)?.flags.contains(.canDeleteHistory)
 
-                    if peer.groupAccess.canMakeVoiceChat {
+                    if MattermostFeatures.calls, peer.groupAccess.canMakeVoiceChat {
                         var isLiveStream: Bool = false
                         if let peer = peer as? TelegramChannel {
                             isLiveStream = peer.isChannel || peer.flags.contains(.isGigagroup)
