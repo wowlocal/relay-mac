@@ -1,24 +1,58 @@
 #!/bin/bash
-# A distributable Relay for macOS: Release build, stripped copy, Developer ID signature with the hardened runtime,
-# notarization (App Store Connect API key, RELAY_ASC_KEY=path/to/ApiKey_<id>.p8, default the one in
-# ~/.relay-secrets/asc), stapled ticket, zip. Run in a GUI session (codesign); the log is build/relay-mac-release.log,
-# ending with exit=N. Output: build/Relay-<version>-macos-<universal|arch>.zip (Release builds x86_64 and arm64).
+# A Relay for macOS release, as Snippets ships (wowlocal/snippets Distribution/Release): notarized app, Sparkle appcast,
+# both on the macos-releases bucket (Yandex Object Storage) under relay/, where the app's SUFeedURL points.
+#
+#   1. Release build (CFBundleVersion = commit count of HEAD, so every release is newer; RELAY_VERSION sets the
+#      marketing version), stripped copy, Developer ID signature with the hardened runtime, notarization (App Store
+#      Connect API key in ~/.relay-secrets/asc), stapled ticket, zip.
+#   2. build/updates/ keeps every released zip; Sparkle 2's generate_appcast writes appcast.xml from them, signed with
+#      Relay's EdDSA key (~/.relay-secrets/sparkle/relay-mac-ed25519.key, its public half is SUPublicEDKey). No deltas:
+#      the app's Sparkle is 1.21, which can't apply Sparkle 2's delta format.
+#   3. Upload of the zip and appcast.xml with curl's AWS SigV4 (no aws CLI), settings from
+#      ~/.relay-secrets/macos-release.env (S3_BUCKET, S3_ENDPOINT, S3_REGION, S3_PREFIX, AWS_ACCESS_KEY_ID,
+#      AWS_SECRET_ACCESS_KEY; the same bucket and keys as Snippets' Distribution/.env, prefix relay). Without that file
+#      the appcast is made but nothing is uploaded. Then the tag relay-mac-<version>-<build> is pushed.
+#
+# Run in a GUI session (codesign). Log: build/relay-mac-release.log, ending with exit=N.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p build
 LOG="build/relay-mac-release.log"
 exec > >(tee "$LOG") 2>&1
 fail() { echo "error: $1"; echo "exit=1"; exit 1; }
-DERIVED_DATA="${RELAY_DERIVED_DATA:-/Volumes/X5/relay-mac-dd}"
-KEY="${RELAY_ASC_KEY:-$(ls "$HOME"/.relay-secrets/asc/ApiKey_*.p8 2>/dev/null | head -1)}"
-[ -f "$KEY" ] || fail "no App Store Connect API key"
-KEY_ID="$(basename "$KEY" .p8 | sed 's/^ApiKey_//')"
 
-echo "== build"
+DERIVED_DATA="${RELAY_DERIVED_DATA:-/Volumes/X5/relay-mac-dd}"
+ASC_KEY="${RELAY_ASC_KEY:-$(ls "$HOME"/.relay-secrets/asc/ApiKey_*.p8 2>/dev/null | head -1)}"
+ED_KEY="${RELAY_ED_KEY:-$HOME/.relay-secrets/sparkle/relay-mac-ed25519.key}"
+ENV_FILE="${RELAY_RELEASE_ENV:-$HOME/.relay-secrets/macos-release.env}"
+SPARKLE_VERSION="2.9.5"
+SPARKLE_BIN="build/sparkle-$SPARKLE_VERSION/bin"
+[ -f "$ASC_KEY" ] || fail "no App Store Connect API key"
+[ -f "$ED_KEY" ] || fail "no EdDSA key at $ED_KEY"
+ASC_KEY_ID="$(basename "$ASC_KEY" .p8 | sed 's/^ApiKey_//')"
+if [ -n "$(git status --porcelain --untracked-files=no -- . ':!submodules/Sparkle' ':!submodules/tg_owt')" ]; then
+    fail "uncommitted changes: the build number is the commit count, commit first"
+fi
+BUILD="$(git rev-list --count HEAD)"
+VERSION_ARGS=(CURRENT_PROJECT_VERSION="$BUILD")
+if [ -n "${RELAY_VERSION:-}" ]; then
+    VERSION_ARGS+=(MARKETING_VERSION="$RELAY_VERSION")
+fi
+
+if [ ! -x "$SPARKLE_BIN/generate_appcast" ]; then
+    echo "== Sparkle $SPARKLE_VERSION tools"
+    mkdir -p "build/sparkle-$SPARKLE_VERSION"
+    curl -sSL -o "build/sparkle-$SPARKLE_VERSION/Sparkle.tar.xz" "https://github.com/sparkle-project/Sparkle/releases/download/$SPARKLE_VERSION/Sparkle-$SPARKLE_VERSION.tar.xz" \
+        && tar -xJf "build/sparkle-$SPARKLE_VERSION/Sparkle.tar.xz" -C "build/sparkle-$SPARKLE_VERSION" || fail "Sparkle tools"
+fi
+
+echo "== build $BUILD"
 xcodebuild -workspace Telegram-Mac.xcworkspace -scheme Telegram -configuration Release -derivedDataPath "$DERIVED_DATA" \
-    -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO build > build/relay-mac-release-xcodebuild.log 2>&1 \
+    -destination 'platform=macOS,arch=arm64' CODE_SIGNING_ALLOWED=NO "${VERSION_ARGS[@]}" build > build/relay-mac-release-xcodebuild.log 2>&1 \
     || fail "xcodebuild (build/relay-mac-release-xcodebuild.log)"
-VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$DERIVED_DATA/Build/Products/Release/Relay.app/Contents/Info.plist")"
+PLIST="$DERIVED_DATA/Build/Products/Release/Relay.app/Contents/Info.plist"
+VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$PLIST")"
+[ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$PLIST")" = "$BUILD" ] || fail "CFBundleVersion is not $BUILD"
 
 echo "== strip"
 rm -rf build/Relay.app
@@ -32,20 +66,49 @@ RELAY_SIGN_IDENTITY="Developer ID Application" RELAY_HARDENED=1 bash tools/relay
 echo "== notarize"
 rm -f build/Relay-notarize.zip
 ditto -c -k --keepParent build/Relay.app build/Relay-notarize.zip
-xcrun notarytool submit build/Relay-notarize.zip --key "$KEY" --key-id "$KEY_ID" --wait | tail -3 | tee build/relay-mac-notarize.log
+xcrun notarytool submit build/Relay-notarize.zip --key "$ASC_KEY" --key-id "$ASC_KEY_ID" --wait | tail -3 | tee build/relay-mac-notarize.log
 grep -q "status: Accepted" build/relay-mac-notarize.log || fail "notarization"
 rm -f build/Relay-notarize.zip
 xcrun stapler staple build/Relay.app || fail "staple"
 spctl -a -vv build/Relay.app 2>&1 | head -2
 
 echo "== zip"
-ARCHS="$(lipo -archs build/Relay.app/Contents/MacOS/Relay)"
-case "$ARCHS" in
-    *x86_64*arm64*|*arm64*x86_64*) SUFFIX=universal ;;
-    *) SUFFIX="$(echo "$ARCHS" | tr ' ' '-')" ;;
-esac
-ZIP="build/Relay-$VERSION-macos-$SUFFIX.zip"
-rm -f "$ZIP"
-ditto -c -k --keepParent build/Relay.app "$ZIP"
-echo "$ZIP"
+ZIP_NAME="Relay-$VERSION-$BUILD.zip"
+mkdir -p build/updates
+rm -f "build/updates/$ZIP_NAME"
+ditto -c -k --keepParent build/Relay.app "build/updates/$ZIP_NAME"
+
+echo "== appcast"
+if [ -f "$ENV_FILE" ]; then
+    set -a
+    . "$ENV_FILE"
+    set +a
+fi
+S3_ENDPOINT="${S3_ENDPOINT:-https://storage.yandexcloud.net}"
+S3_BUCKET="${S3_BUCKET:-macos-releases}"
+S3_PREFIX="${S3_PREFIX:-relay}"
+S3_REGION="${S3_REGION:-ru-central1}"
+DOWNLOAD_PREFIX="$S3_ENDPOINT/$S3_BUCKET/$S3_PREFIX/"
+"$SPARKLE_BIN/generate_appcast" --ed-key-file "$ED_KEY" --download-url-prefix "$DOWNLOAD_PREFIX" --maximum-deltas 0 build/updates \
+    || fail "generate_appcast"
+grep -q "<sparkle:version>$BUILD</sparkle:version>" build/updates/appcast.xml || fail "appcast has no item for $BUILD"
+
+if [ -z "${AWS_ACCESS_KEY_ID:-}" ] || [ -z "${AWS_SECRET_ACCESS_KEY:-}" ]; then
+    echo "no upload keys ($ENV_FILE): build/updates/$ZIP_NAME and build/updates/appcast.xml are ready, nothing uploaded"
+    echo "exit=0"
+    exit 0
+fi
+
+echo "== upload to $DOWNLOAD_PREFIX"
+upload() {
+    curl --silent --show-error --fail --aws-sigv4 "aws:amz:$S3_REGION:s3" --user "$AWS_ACCESS_KEY_ID:$AWS_SECRET_ACCESS_KEY" \
+        --header "Content-Type: $2" --upload-file "$1" "$DOWNLOAD_PREFIX$(basename "$1")" || fail "upload of $(basename "$1")"
+}
+upload "build/updates/$ZIP_NAME" application/zip
+upload build/updates/appcast.xml application/xml
+curl -sf "${DOWNLOAD_PREFIX}appcast.xml" | grep -q "<sparkle:version>$BUILD</sparkle:version>" || fail "the published appcast has no item for $BUILD"
+
+TAG="relay-mac-$VERSION-$BUILD"
+git tag "$TAG" && git push -q origin "$TAG" || echo "warning: tag $TAG not pushed"
+echo "released $VERSION ($BUILD): ${DOWNLOAD_PREFIX}$ZIP_NAME"
 echo "exit=0"

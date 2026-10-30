@@ -99,6 +99,9 @@ func updateApplication(sharedContext: SharedAccountContext) {
         
         
         _ = (sharedContext.activeAccountsWithInfo |> take(1) |> mapToSignal { _, accounts -> Signal<Never, NoError> in
+            if MattermostBackend.isEnabled {
+                return .complete()
+            }
             return combineLatest(accounts.map { addAppUpdateText($0.account.postbox, applyText: text) }) |> ignoreValues
         } |> deliverOnMainQueue).start(completed: { 
               driver?.install(withToolAndRelaunch: true)
@@ -732,9 +735,6 @@ private func cancelStagedUpdate() {
 }
 
 private func resetUpdater() {
-    if MattermostBackend.isEnabled {
-        return
-    }
     #if !GITHUB
         let update:()->Void = {
             let state = stateValue.with { $0.loadingState }
@@ -765,8 +765,9 @@ private func resetUpdater() {
 private var updaterSource: UpdaterSource? = nil
 
 func updater_resetWithUpdaterSource(_ source: UpdaterSource, force: Bool = true) {
-    if MattermostBackend.isEnabled {
-        return
+    var source = source
+    if MattermostBackend.isEnabled, case let .internal(context) = source {
+        source = .external(context: context)
     }
     let state = stateValue.with { $0 }
     switch state.loadingState {
@@ -798,7 +799,7 @@ private func alternateUpdaterSource(_ source: UpdaterSource) -> UpdaterSource? {
     switch source {
     case let .external(context):
         #if STABLE || DEBUG || BETA
-        if let context = context {
+        if let context = context, !MattermostBackend.isEnabled {
             return .internal(context: context)
         }
         #endif
