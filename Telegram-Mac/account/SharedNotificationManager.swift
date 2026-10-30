@@ -406,7 +406,8 @@ final class SharedNotificationManager : NSObject, NSUserNotificationCenterDelega
             }
         }
         
-        disposableDict.set((combineLatest(account.stateManager.notificationMessages, reactions) |> mapToSignal { messages, reactions -> Signal<([Source], InAppNotificationSettings), NoError> in
+        let reactionsOrNone: Signal<[ReactionTuple], NoError> = MattermostBackend.isEnabled ? (.single([]) |> then(reactions)) : reactions
+        disposableDict.set((combineLatest(account.stateManager.notificationMessages, reactionsOrNone) |> mapToSignal { messages, reactions -> Signal<([Source], InAppNotificationSettings), NoError> in
             return appNotificationSettings(accountManager: self.accountManager) |> take(1) |> mapToSignal { inAppSettings -> Signal<([Source], InAppNotificationSettings), NoError> in
                 self.showNotificationsOutOfFocus = inAppSettings.showNotificationsOutOfFocus
                 self.requestUserAttention = inAppSettings.requestUserAttention

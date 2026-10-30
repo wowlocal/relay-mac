@@ -1,4 +1,5 @@
 import Cocoa
+import UserNotifications
 import FFMpegBinding
 import SwiftSignalKit
 import Postbox
@@ -1857,6 +1858,16 @@ extension AppDelegate {
                 context.bindings.rootNavigation().push(ChatAdditionController(context: context, chatLocation: .thread(thread), mode: .thread(mode: .replies(origin: found.0)), focusTarget: nil, initialAction: nil, chatLocationContextHolder: Atomic(value: nil)))
                 completion(true, nil, ["root": "\(found.0.id)", "replies": found.1, "text": String(found.2.prefix(80))])
             })
+        })
+        RelayDebugRemote.register("notifications", { _, completion in
+            UNUserNotificationCenter.current().getNotificationSettings { settings in
+                UNUserNotificationCenter.current().getDeliveredNotifications { delivered in
+                    let items = delivered.map { $0.request.content.title + " | " + $0.request.content.body }
+                    DispatchQueue.main.async {
+                        completion(true, nil, ["authorization": settings.authorizationStatus.rawValue, "delivered": items])
+                    }
+                }
+            }
         })
         RelayDebugRemote.register("send", { [weak self] command, completion in
             guard let context = self?.contextValue?.context, let text = command["text"], let peerId = relayDebugLastPeerId else {
