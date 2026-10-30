@@ -2,7 +2,7 @@
 # A distributable Relay for macOS: Release build, stripped copy, Developer ID signature with the hardened runtime,
 # notarization (App Store Connect API key, RELAY_ASC_KEY=path/to/ApiKey_<id>.p8, default the one in
 # ~/.relay-secrets/asc), stapled ticket, zip. Run in a GUI session (codesign); the log is build/relay-mac-release.log,
-# ending with exit=N. Output: build/Relay-<version>-macos-arm64.zip.
+# ending with exit=N. Output: build/Relay-<version>-macos-<universal|arch>.zip (Release builds x86_64 and arm64).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p build
@@ -39,7 +39,12 @@ xcrun stapler staple build/Relay.app || fail "staple"
 spctl -a -vv build/Relay.app 2>&1 | head -2
 
 echo "== zip"
-ZIP="build/Relay-$VERSION-macos-arm64.zip"
+ARCHS="$(lipo -archs build/Relay.app/Contents/MacOS/Relay)"
+case "$ARCHS" in
+    *x86_64*arm64*|*arm64*x86_64*) SUFFIX=universal ;;
+    *) SUFFIX="$(echo "$ARCHS" | tr ' ' '-')" ;;
+esac
+ZIP="build/Relay-$VERSION-macos-$SUFFIX.zip"
 rm -f "$ZIP"
 ditto -c -k --keepParent build/Relay.app "$ZIP"
 echo "$ZIP"
