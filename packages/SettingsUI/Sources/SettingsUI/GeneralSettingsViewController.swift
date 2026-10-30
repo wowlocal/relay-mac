@@ -381,8 +381,10 @@ private func generalSettingsEntries(arguments:GeneralSettingsArguments, baseSett
     
     entries.append(.header(sectionId: sectionId, uniqueId: headerUnique, text: strings().generalSettingsInterfaceHeader))
     headerUnique -= 1
-    entries.append(.showCallsTab(sectionId: sectionId, enabled: baseSettings.showCallsTab, viewType: .firstItem))
-    entries.append(.statusBar(sectionId: sectionId, enabled: baseSettings.statusBar, viewType: .innerItem))
+    if MattermostFeatures.calls {
+        entries.append(.showCallsTab(sectionId: sectionId, enabled: baseSettings.showCallsTab, viewType: .firstItem))
+    }
+    entries.append(.statusBar(sectionId: sectionId, enabled: baseSettings.statusBar, viewType: MattermostFeatures.calls ? .innerItem : .firstItem))
     entries.append(.previewChats(sectionId: sectionId, enabled: additionalSettings.previewChats, viewType: .lastItem))
     entries.append(.previewChatsInfo(sectionId: sectionId))
 

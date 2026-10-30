@@ -4,6 +4,7 @@ import Postbox
 import TelegramCore
 import SwiftSignalKit
 import ChatListUI
+import RelayUI
 import CrashReports
 import ApiCredentials
 
@@ -67,6 +68,17 @@ private func mapChatListInAppLink(_ link: inAppLink) -> ChatListInAppLink {
 }
 
 func installChatListUIHooks() {
+    ChatListUIHooks.relayBrowseChannels = { context in
+        if let context {
+            context.bindings.rootNavigation().push(RelayBrowseChannelsController(context: context))
+        }
+    }
+    RelayUIHooks.shared.openChat = { context, peerId in
+        navigateToChat(navigation: context.bindings.rootNavigation(), context: context.concrete, chatLocation: .peer(peerId))
+    }
+    RelayUIHooks.shared.push = { context, controller in
+        context.bindings.rootNavigation().push(controller)
+    }
     ChatListUIHooks.install(ChatListUIHooks(makeShareLinkModal: { context, link in
         return ShareModalController(ShareLinkObject(context.concrete, link: link))
     }, pushPeerInfo: { navigation, context, peerId in
@@ -82,11 +94,19 @@ func installChatListUIHooks() {
     }, makeAddContactModal: { context in
         return AddContactModalController(context.concrete)
     }, composeCreateGroup: { context in
-        context?.concrete.composeCreateGroup()
+        if MattermostBackend.isEnabled, let context {
+            context.bindings.rootNavigation().push(RelayNewMessageController(context: context))
+        } else {
+            context?.concrete.composeCreateGroup()
+        }
     }, composeCreateSecretChat: { context in
         context?.concrete.composeCreateSecretChat()
     }, composeCreateChannel: { context in
-        context?.concrete.composeCreateChannel()
+        if MattermostBackend.isEnabled, let context {
+            context.bindings.rootNavigation().push(RelayNewChannelController(context: context))
+        } else {
+            context?.concrete.composeCreateChannel()
+        }
     }, navigateToChat: { navigation, context, chatLocation, focusTarget, initialAction, additional, animated, navigationStyle in
         navigateToChat(navigation: navigation, context: context.concrete, chatLocation: chatLocation, focusTarget: focusTarget, initialAction: initialAction, additional: additional, animated: animated, navigationStyle: navigationStyle)
     }, makeChatController: { context, chatLocation, initialAction in

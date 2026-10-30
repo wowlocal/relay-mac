@@ -538,7 +538,7 @@ private func accountInfoEntries<Context: AccountContextProtocol>(peerView:PeerVi
        
     }
     
-    if let peer = peerViewMainPeer(peerView) {
+    if MattermostFeatures.premium, let peer = peerViewMainPeer(peerView) {
         if context.isPremium {
             entries.append(.setStatus(index: index, viewType: .singleItem, PeerEquatable(peer)))
             index += 1
@@ -563,7 +563,7 @@ private func accountInfoEntries<Context: AccountContextProtocol>(peerView:PeerVi
         has2fa = true
     }
     
-    if !has2fa {
+    if !has2fa && MattermostFeatures.telegramPrivacy {
         entries.append(.whiteSpace(index: index, height: 10))
         index += 1
         entries.append(.set2FaAlert(index: index, viewType: .firstItem))
@@ -607,10 +607,12 @@ private func accountInfoEntries<Context: AccountContextProtocol>(peerView:PeerVi
     index += 1
     
     
-    entries.append(.stories(index: index, viewType: .singleItem))
-    index += 1
+    if MattermostFeatures.stories {
+        entries.append(.stories(index: index, viewType: .singleItem))
+        index += 1
+    }
 
-    if #available(macOS 10.15, *) {
+    if #available(macOS 10.15, *), MattermostFeatures.payments {
         if SettingsHooks.shared.walletHooks.hasWallet(context), context.appConfiguration.getBoolValue("wallet_available", orElse: false) {
             entries.append(.wallet(index: index, balance: walletBalance, viewType: .singleItem))
             index += 1
@@ -620,7 +622,7 @@ private func accountInfoEntries<Context: AccountContextProtocol>(peerView:PeerVi
     entries.append(.whiteSpace(index: index, height: 10))
     index += 1
 
-    for bot in attachMenuBots {
+    for bot in attachMenuBots where MattermostFeatures.botWebApps {
         if #available(macOS 10.15, *), SettingsHooks.shared.walletHooks.hasWallet(context), context.account.testingEnvironment, bot.peer.addressName?.lowercased() == "wallet" {
             continue
         }
@@ -631,7 +633,7 @@ private func accountInfoEntries<Context: AccountContextProtocol>(peerView:PeerVi
     }
     
     
-    if !proxySettings.0.servers.isEmpty {
+    if !proxySettings.0.servers.isEmpty && MattermostFeatures.mtprotoProxy {
         entries.append(.whiteSpace(index: index, height: 10))
         index += 1
         
@@ -654,25 +656,33 @@ private func accountInfoEntries<Context: AccountContextProtocol>(peerView:PeerVi
     index += 1
     entries.append(.notifications(index: index, viewType: .singleItem, status: unAuthStatus))
     index += 1
-    entries.append(.privacy(index: index, viewType: .singleItem, privacySettings, twoStepConfiguration, webSessions))
-    index += 1
+    if MattermostFeatures.telegramPrivacy {
+        entries.append(.privacy(index: index, viewType: .singleItem, privacySettings, twoStepConfiguration, webSessions))
+        index += 1
+    }
     entries.append(.dataAndStorage(index: index, viewType: .singleItem))
     index += 1
-    entries.append(.activeSessions(index: index, viewType: .singleItem, activeSessions: sessionsCount))
-    index += 1
+    if MattermostFeatures.telegramPrivacy {
+        entries.append(.activeSessions(index: index, viewType: .singleItem, activeSessions: sessionsCount))
+        index += 1
+    }
     entries.append(.appearance(index: index, viewType: .singleItem))
     index += 1
-    entries.append(.language(index: index, viewType: .singleItem, current: language.localizedName))
-    index += 1
-    entries.append(.stickers(index: index, viewType: .singleItem))
-    index += 1
+    if MattermostFeatures.languagePacks {
+        entries.append(.language(index: index, viewType: .singleItem, current: language.localizedName))
+        index += 1
+    }
+    if MattermostFeatures.stickersAndGifs {
+        entries.append(.stickers(index: index, viewType: .singleItem))
+        index += 1
+    }
     
     if hasFilters {
         entries.append(.filters(index: index, viewType: .singleItem))
         index += 1
     }
     
-    if let state = appUpdateState, !context.isSupport {
+    if let state = appUpdateState, !context.isSupport, !MattermostBackend.isEnabled {
         entries.append(.update(index: index, viewType: .singleItem, state: AnyUpdateStateEquatable(any: state)))
         index += 1
     }
@@ -681,7 +691,7 @@ private func accountInfoEntries<Context: AccountContextProtocol>(peerView:PeerVi
     entries.append(.whiteSpace(index: index, height: 20))
     index += 1
     
-    if let peer = peerViewMainPeer(peerView) as? TelegramUser, passportVisible {
+    if let peer = peerViewMainPeer(peerView) as? TelegramUser, passportVisible, MattermostFeatures.passport {
         entries.append(.passport(index: index, viewType: .singleItem, peer: PeerEquatable(peer)))
         index += 1
         
@@ -689,7 +699,7 @@ private func accountInfoEntries<Context: AccountContextProtocol>(peerView:PeerVi
         index += 1
     }
     
-    if !context.premiumIsBlocked {
+    if !context.premiumIsBlocked && MattermostFeatures.premium {
         entries.append(.premium(index: index, viewType: .singleItem))
         index += 1
         
@@ -717,13 +727,15 @@ private func accountInfoEntries<Context: AccountContextProtocol>(peerView:PeerVi
     }
    
 
-    entries.append(.faq(index: index, viewType: .singleItem))
-    index += 1
-    entries.append(.ask(index: index, viewType: .singleItem))
-    index += 1
-    
-    entries.append(.whiteSpace(index: index, height: 20))
-    index += 1
+    if MattermostFeatures.telegramSupport {
+        entries.append(.faq(index: index, viewType: .singleItem))
+        index += 1
+        entries.append(.ask(index: index, viewType: .singleItem))
+        index += 1
+        
+        entries.append(.whiteSpace(index: index, height: 20))
+        index += 1
+    }
     
     entries.append(.about(index: index, viewType: .singleItem))
     index += 1

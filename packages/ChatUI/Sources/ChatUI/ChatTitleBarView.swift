@@ -546,7 +546,7 @@ class ChatTitleBarView: TitledBarView, InteractionContentViewProtocol {
                     if peer.isGroup || peer.isSupergroup || peer.isChannel {
                         if let groupCall = presentation.groupCall {
                             if let data = groupCall.data, data.participantCount == 0 && groupCall.activeCall.scheduleTimestamp == nil {
-                                callButton.isHidden = presentation.reportMode != nil
+                                callButton.isHidden = presentation.reportMode != nil || !MattermostFeatures.calls
                             } else {
                                 callButton.isHidden = true
                             }
@@ -554,7 +554,7 @@ class ChatTitleBarView: TitledBarView, InteractionContentViewProtocol {
                             callButton.isHidden = true
                         }
                     } else {
-                        callButton.isHidden = !peer.canCall || chatInteraction.peerId == chatInteraction.interactionContext.peerId || presentation.reportMode != nil || chatInteraction.isMonoforum
+                        callButton.isHidden = !peer.canCall || chatInteraction.peerId == chatInteraction.interactionContext.peerId || presentation.reportMode != nil || chatInteraction.isMonoforum || !MattermostFeatures.calls
                     }
                     
                     

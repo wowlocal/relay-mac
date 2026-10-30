@@ -252,7 +252,7 @@ public final class ChatInputAttachButton: View, MorphHoldObserving {
 
                 if let shortcuts = chatInteraction.presentation.shortcuts, let peer = chatInteraction.peer, chatInteraction.presentation.chatMode == .history {
                     if peer.isUser && !peer.isBot {
-                        if !shortcuts.items.isEmpty, context.isPremium {
+                        if MattermostFeatures.business, !shortcuts.items.isEmpty, context.isPremium {
                             items.append(ContextMenuItem(strings().chatInputAttachQuickReply, handler: { [weak self] in
                                 self?.chatInteraction.clearInput()
                                 self?.chatInteraction.appendText(.initialize(string: "/"))
@@ -271,7 +271,7 @@ public final class ChatInputAttachButton: View, MorphHoldObserving {
 
 
                 if let peer = chatInteraction.presentation.mainPeer {
-                    if context.premiumLimits.show_premium_gift_in_attach_menu, !peer.isPremium, peer.isUser {
+                    if MattermostFeatures.premium, context.premiumLimits.show_premium_gift_in_attach_menu, !peer.isPremium, peer.isUser {
                         items.append(ContextMenuItem(strings().inputAttachPopoverGift, handler: { [weak self] in
                             showModal(with: GiftingController(context: context, peerId: peerId, isBirthday: false), for: context.window, morphSource: { [weak self] in self?.button })
                         }, itemImage: MenuAnimation.menu_gift.value))
@@ -396,6 +396,13 @@ public final class ChatInputAttachButton: View, MorphHoldObserving {
                         canAttachLocation = false
                     }
                 }
+                if !MattermostFeatures.polls {
+                    canAttachPoll = false
+                    canAttachTodo = false
+                }
+                if MattermostBackend.isEnabled {
+                    canAttachLocation = false
+                }
                 if canAttachPoll && permissionText(from: peer, for: .banSendPolls) != nil {
                     canAttachPoll = false
                 }
@@ -446,7 +453,7 @@ public final class ChatInputAttachButton: View, MorphHoldObserving {
                     }, itemImage: MenuAnimation.menu_location.value))
                 }
 
-                if #available(macOS 12, *), chatInteraction.interactionContext.appConfiguration.isRichTextEditorEnabled {
+                if #available(macOS 12, *), MattermostFeatures.richTextPosts, chatInteraction.interactionContext.appConfiguration.isRichTextEditorEnabled {
                     items.append(ContextMenuItem(strings().richTextEditorAttachTitle, handler: { [weak self] in
                         guard let self = self else { return }
                         showRichTextEditor(chatInteraction: self.chatInteraction, morphSource: { [weak self] in self?.button })

@@ -53,6 +53,7 @@ public enum ChatListInAppLink {
 }
 
 public struct ChatListUIHooks {
+    public static var relayBrowseChannels: ((any AccountContextProtocol)?) -> Void = { _ in }
     public let makeShareLinkModal: (any AccountContextProtocol, String) -> ModalViewController
     public let pushPeerInfo: (NavigationViewController, any AccountContextProtocol, PeerId) -> Void
     public let makePremiumStatusController: (any AccountContextProtocol, @escaping (TelegramMediaFile, StarGift.UniqueGift?, Int32?, CGRect?) -> Void, TelegramUser) -> ViewController

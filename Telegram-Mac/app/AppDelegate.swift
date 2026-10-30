@@ -1809,6 +1809,28 @@ extension AppDelegate {
                 completion(true, nil, ["peerId": "\(match.0.toInt64())", "title": match.1, "candidates": titles.map { $0.1 }])
             })
         })
+        RelayDebugRemote.register("screen", { [weak self] command, completion in
+            guard let context = self?.contextValue?.context else {
+                completion(false, "no account", [:])
+                return
+            }
+            switch command["name"] ?? "" {
+            case "new-message":
+                context.bindings.rootNavigation().push(RelayNewMessageController(context: context))
+            case "new-channel":
+                context.bindings.rootNavigation().push(RelayNewChannelController(context: context))
+            case "browse":
+                context.bindings.rootNavigation().push(RelayBrowseChannelsController(context: context))
+            case "settings":
+                context.bindings.mainViewController.showPreferences()
+            case "chats":
+                context.bindings.mainViewController.showChatList()
+            default:
+                completion(false, "unknown screen", [:])
+                return
+            }
+            completion(true, nil, [:])
+        })
         RelayDebugRemote.register("send", { [weak self] command, completion in
             guard let context = self?.contextValue?.context, let text = command["text"], let peerId = relayDebugLastPeerId else {
                 completion(false, "no account, text or opened chat", [:])

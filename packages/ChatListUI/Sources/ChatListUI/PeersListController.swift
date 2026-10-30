@@ -2870,7 +2870,15 @@ open class PeersListController<Context: AccountContextProtocol>: TelegramGeneric
                     }
                 }, itemImage: MenuAnimation.menu_gear.value))
             } else {
-                let items = [ContextMenuItem(strings().composePopoverNewGroup, handler: { [weak self] in
+                let items = MattermostBackend.isEnabled ? [ContextMenuItem("New Message", handler: { [weak self] in
+                    ChatListUIHooks.shared.composeCreateGroup(self?.context)
+                }, itemImage: MenuAnimation.menu_create_group.value),
+                ContextMenuItem("New Channel", handler: { [weak self] in
+                    ChatListUIHooks.shared.composeCreateChannel(self?.context)
+                }, itemImage: MenuAnimation.menu_channel.value),
+                ContextMenuItem("Browse Channels", handler: { [weak self] in
+                    ChatListUIHooks.relayBrowseChannels(self?.context)
+                }, itemImage: MenuAnimation.menu_folder.value)] : [ContextMenuItem(strings().composePopoverNewGroup, handler: { [weak self] in
                     ChatListUIHooks.shared.composeCreateGroup(self?.context)
                 }, itemImage: MenuAnimation.menu_create_group.value),
                 ContextMenuItem(strings().composePopoverNewSecretChat, handler: { [weak self] in

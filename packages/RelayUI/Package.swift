@@ -7,6 +7,7 @@ let deps: [(String, String)] = [
     ("GeneralRows", "../GeneralRows"),
     ("TelegramTheme", "../TelegramTheme"),
     ("InputDataUI", "../InputDataUI"),
+    ("TelegramContext", "../TelegramContext"),
 ]
 
 let package = Package(
@@ -21,6 +22,7 @@ let package = Package(
         .package(name: "Postbox", path: "../../submodules/telegram-ios/submodules/Postbox"),
         .package(name: "MattermostKit", path: "../../submodules/telegram-ios/submodules/MattermostKit"),
         .package(name: "MattermostSync", path: "../../submodules/telegram-ios/submodules/MattermostSync"),
+        .package(name: "MattermostSyncCore", path: "../../submodules/telegram-ios/submodules/MattermostSyncCore"),
     ] + deps.map { .package(name: $0.0, path: $0.1) },
     targets: [
         .target(
@@ -31,6 +33,7 @@ let package = Package(
                 .product(name: "Postbox", package: "Postbox", condition: nil),
                 .product(name: "MattermostKit", package: "MattermostKit", condition: nil),
                 .product(name: "MattermostSync", package: "MattermostSync", condition: nil),
+                .product(name: "MattermostSyncCore", package: "MattermostSyncCore", condition: nil),
             ] + deps.map { .product(name: $0.0, package: $0.0, condition: nil) },
             path: "Sources/RelayUI"),
     ]
