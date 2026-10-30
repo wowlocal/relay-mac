@@ -93,7 +93,7 @@ public final class EntertainmentView : View {
     }
     
     public func updateSelected(_ state: EntertainmentState, mode: EntertainmentViewController.Mode, animated: Bool) {
-        self.tabStates = mode == .selectAvatar ? [.stickers, .gifs] : [.emoji, .stickers, .gifs]
+        self.tabStates = mode == .selectAvatar ? [.stickers, .gifs] : (MattermostFeatures.stickersAndGifs ? [.emoji, .stickers, .gifs] : [.emoji])
         self.selectedState = state
         self.updateTabs(animated: animated)
     }
@@ -308,17 +308,20 @@ public class EntertainmentViewController<Context: AccountContextProtocol>: Teleg
         self.stickers.mode = mode
         self.gifs.mode = mode
         
+        let emojiOnly = !MattermostFeatures.stickersAndGifs && (mode == .common || mode == .stories)
         var items:[SectionControllerItem] = []
         if mode == .common || mode == .stories {
             items.append(SectionControllerItem(title:{strings().entertainmentEmoji.uppercased()}, controller: emoji))
         }
-        items.append(SectionControllerItem(title: {strings().entertainmentStickers.uppercased()}, controller: stickers))
-        items.append(SectionControllerItem(title: {strings().entertainmentGIF.uppercased()}, controller: gifs))
+        if !emojiOnly {
+            items.append(SectionControllerItem(title: {strings().entertainmentStickers.uppercased()}, controller: stickers))
+            items.append(SectionControllerItem(title: {strings().entertainmentGIF.uppercased()}, controller: gifs))
+        }
 
         
 
         let index: Int
-        if mode == .selectAvatar {
+        if mode == .selectAvatar || emojiOnly {
             index = 0
         } else {
             index = Int(FastSettings.entertainmentState.rawValue)
