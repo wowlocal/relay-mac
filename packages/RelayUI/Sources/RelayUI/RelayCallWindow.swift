@@ -20,7 +20,9 @@ private final class RelayCallWindow: NSObject, NSWindowDelegate {
         window.title = session.title
         window.isReleasedWhenClosed = false
         window.delegate = self
-        window.contentViewController = NSHostingController(rootView: RelayCallView(session: session, close: { [weak self] in self?.window.close() }))
+        let hostingController = NSHostingController(rootView: RelayCallView(session: session, close: { [weak self] in self?.window.close() }))
+        hostingController.sizingOptions = []
+        window.contentViewController = hostingController
         window.minSize = NSSize(width: 440, height: 500)
         window.setContentSize(NSSize(width: 720, height: 620))
         window.center()
