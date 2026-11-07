@@ -1,0 +1,25 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "LiveKitFFI",
+        "repositoryURL": "https://github.com/livekit/livekit-ffi-xcframework.git",
+        "state": {
+          "branch": null,
+          "revision": "685cfd95e23edf734450125eb58bb3bb21b4133b",
+          "version": "0.13.1"
+        }
+      },
+      {
+        "package": "LiveKitWebRTC",
+        "repositoryURL": "https://github.com/livekit/webrtc-xcframework.git",
+        "state": {
+          "branch": null,
+          "revision": "f843fb1c12017bd17fde38e7293649c204548467",
+          "version": "150.7871.4"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
