@@ -743,6 +743,9 @@ final class ChatHeaderBubblesView: View, InteractionContentViewProtocol {
         default:
             callVisible = false
         }
+        if MattermostBackend.isEnabled, case .history = chatInteraction.mode {
+            callVisible = chatInteraction.peerId != chatInteraction.interactionContext.peerId && presentation.reportMode == nil
+        }
         callHidden = !callVisible
         callButton.isHidden = !callVisible
     }

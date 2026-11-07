@@ -566,6 +566,10 @@ class ChatTitleBarView: TitledBarView, InteractionContentViewProtocol {
                 callButton.isHidden = true
             }
 
+            if MattermostBackend.isEnabled, case .history = chatInteraction.mode {
+                callButton.isHidden = chatInteraction.peerId == chatInteraction.interactionContext.peerId || presentation.reportMode != nil
+            }
+
             
             if let peer = peerViewMainPeer(peerView) {
                 if peer.id == repliesPeerId {
