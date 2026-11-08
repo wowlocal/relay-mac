@@ -1,12 +1,17 @@
 import Foundation
 // Sends one command to a running debug build of Relay for macOS (RelayDebugRemote) and prints the answer:
 //   relay-mac-remote action=open-chat query=Town\ Square
+//   relay-mac-remote call-video on        (a bare first word is the action, a second one its value)
 // Values come as key=value arguments; `password` may come from the environment (RELAY_REMOTE_PASSWORD) instead.
 var command: [String: String] = ["id": UUID().uuidString]
 for argument in CommandLine.arguments.dropFirst() {
     let parts = argument.split(separator: "=", maxSplits: 1).map(String.init)
     if parts.count == 2 {
         command[parts[0]] = parts[1]
+    } else if command["action"] == nil {
+        command["action"] = argument
+    } else {
+        command["value"] = argument
     }
 }
 if command["password"] == nil, let password = ProcessInfo.processInfo.environment["RELAY_REMOTE_PASSWORD"] {

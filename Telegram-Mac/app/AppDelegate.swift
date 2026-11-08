@@ -48,6 +48,10 @@ import CrashRecoveryUI
 import StarsUI
 import PerfLab
 import SettingsUI
+import RelayTelegramCalls
+import GroupCallScreenUI
+import TgVoipWebrtc
+import TelegramCallsCore
 
 //#if BETA || DEBUG
 //import Firebase
@@ -1878,6 +1882,393 @@ extension AppDelegate {
             }
             let _ = (enqueueMessages(account: context.account, peerId: peerId, messages: [.message(text: text, attributes: [], inlineStickers: [:], mediaReference: nil, threadId: nil, replyToMessageId: nil, replyToStoryId: nil, localGroupingKey: nil, correlationId: nil, bubbleUpEmojiOrStickersets: [])]) |> deliverOnMainQueue).start(next: { ids in
                 completion(true, nil, ["messageIds": ids.map { $0.map { "\($0.id)" } ?? "nil" }])
+            })
+        })
+        self.installRelayCallDebugRemote()
+    }
+}
+#endif
+
+#if DEBUG
+private func relayDebugFindPeer(_ context: AccountContext, _ query: String, _ completion: @escaping (PeerId?, String, [String]) -> Void) {
+    let _ = (context.engine.contacts.searchLocalPeers(query: query) |> take(1) |> deliverOnMainQueue).start(next: { peers in
+        let candidates = peers.compactMap { $0.peer }
+        let lower = query.lowercased()
+        let match = candidates.first(where: { $0.addressName?.lowercased() == lower }) ?? candidates.first(where: { $0._asPeer().displayTitle.lowercased() == lower }) ?? candidates.first
+        completion(match?.id, match?._asPeer().displayTitle ?? "", candidates.map { $0._asPeer().displayTitle })
+    })
+}
+
+private func relayDebugFlag(_ value: String?) -> Bool? {
+    switch value?.lowercased() {
+    case "on"?, "1"?, "true"?, "yes"?:
+        return true
+    case "off"?, "0"?, "false"?, "no"?:
+        return false
+    default:
+        return nil
+    }
+}
+
+private func relayDebugWindows() -> [[String: Any]] {
+    return NSApp.windows.filter { $0.isVisible }.enumerated().map { index, window in
+        return ["index": index, "class": String(describing: type(of: window)), "title": window.title, "frame": NSStringFromRect(window.frame), "key": window.isKeyWindow, "level": window.level.rawValue]
+    }
+}
+
+private func relayDebugCallState(_ state: CallState) -> [String: Any] {
+    return ["state": "\(state.state)", "videoState": "\(state.videoState)", "remoteVideoState": "\(state.remoteVideoState)", "isMuted": state.isMuted, "isOutgoingVideoPaused": state.isOutgoingVideoPaused, "remoteAspectRatio": state.remoteAspectRatio, "remoteAudioState": "\(state.remoteAudioState)", "isScreenCapture": state.isScreenCapture, "participants": state.participants.map { $0._asPeer().displayTitle }, "conferenceReference": state.conferenceReference.map { "\($0)" } ?? NSNull()]
+}
+
+private func relayDebugText(_ view: NSView) -> String? {
+    if let text = view as? TextView, let string = text.textLayout?.attributedString.string {
+        return string
+    }
+    if let text = view as? NSTextField {
+        return text.stringValue
+    }
+    if let button = view as? NSButton {
+        return button.title
+    }
+    return nil
+}
+
+private func relayDebugFind(_ view: NSView, _ text: String, _ found: inout [NSView]) {
+    if !view.isHidden, let string = relayDebugText(view), string.lowercased() == text.lowercased() {
+        found.append(view)
+    }
+    for subview in view.subviews where !subview.isHidden {
+        relayDebugFind(subview, text, &found)
+    }
+}
+
+extension AppDelegate {
+    private var relayDebugShared: SharedAccountContext? {
+        return self.contextValue?.context.sharedContext
+    }
+
+    func installRelayCallDebugRemote() {
+        RelayDebugRemote.register("add-account", { [weak self] _, completion in
+            guard let shared = self?.sharedApplicationContextValue?.sharedContext else {
+                completion(false, "no shared context", [:])
+                return
+            }
+            shared.beginNewAuth(testingEnvironment: false)
+            completion(true, nil, [:])
+        })
+        RelayDebugRemote.register("accounts", { [weak self] _, completion in
+            guard let shared = self?.sharedApplicationContextValue?.sharedContext else {
+                completion(false, "no shared context", [:])
+                return
+            }
+            _ = (shared.activeAccounts |> take(1) |> deliverOnMainQueue).start(next: { value in
+                let accounts = value.accounts.map { id, account, _ -> [String: Any] in
+                    return ["id": "\(id.int64)", "peerId": "\(account.peerId.toInt64())", "primary": value.primary?.id == id]
+                }
+                completion(true, nil, ["accounts": accounts, "hasCurrentAuth": value.currentAuth != nil])
+            })
+        })
+        RelayDebugRemote.register("switch-account", { [weak self] command, completion in
+            guard let shared = self?.sharedApplicationContextValue?.sharedContext, let id = command["id"].flatMap(Int64.init) else {
+                completion(false, "no shared context or id", [:])
+                return
+            }
+            shared.switchToAccount(id: AccountRecordId(rawValue: id), action: nil)
+            completion(true, nil, [:])
+        })
+        RelayDebugRemote.register("windows", { _, completion in
+            completion(true, nil, ["windows": relayDebugWindows()])
+        })
+        RelayDebugRemote.register("click", { command, completion in
+            guard let text = command["text"] ?? command["value"] else {
+                completion(false, "no text", [:])
+                return
+            }
+            let windowFilter = command["window"]?.lowercased()
+            var matches: [NSView] = []
+            for window in NSApp.windows where window.isVisible {
+                if let windowFilter, !String(describing: type(of: window)).lowercased().contains(windowFilter), !window.title.lowercased().contains(windowFilter) {
+                    continue
+                }
+                if let root = window.contentView?.superview ?? window.contentView {
+                    relayDebugFind(root, text, &matches)
+                }
+            }
+            let index = Int(command["index"] ?? "0") ?? 0
+            guard index < matches.count else {
+                completion(false, "no visible view with text \(text)", ["matches": matches.count, "windows": relayDebugWindows()])
+                return
+            }
+            let event: ControlEvent
+            switch command["event"]?.lowercased() {
+            case "up"?:
+                event = .Up
+            case "down"?:
+                event = .Down
+            case "single"?:
+                event = .SingleClick
+            default:
+                event = .Click
+            }
+            var current: NSView? = matches[index]
+            if command["row"] == "1" {
+                while let view = current {
+                    if let row = view as? TableRowView, let item = row.item as? GeneralRowItem {
+                        item.action()
+                        completion(true, nil, ["row": String(describing: type(of: item)), "matches": matches.count])
+                        return
+                    }
+                    current = view.superview
+                }
+                current = matches[index]
+            }
+            while let view = current {
+                if let control = view as? Control, control.userInteractionEnabled {
+                    control.send(event: event)
+                    completion(true, nil, ["control": String(describing: type(of: control)), "matches": matches.count, "window": String(describing: type(of: control.window))])
+                    return
+                }
+                if let button = view as? NSButton {
+                    button.performClick(nil)
+                    completion(true, nil, ["control": String(describing: type(of: button)), "matches": matches.count])
+                    return
+                }
+                current = view.superview
+            }
+            completion(false, "no control around \(text)", ["matches": matches.count])
+        })
+        RelayDebugRemote.register("call", { [weak self] command, completion in
+            guard let context = self?.contextValue?.context, let query = command["user"] ?? command["value"] else {
+                completion(false, "no account or user", [:])
+                return
+            }
+            relayDebugFindPeer(context, query) { peerId, title, candidates in
+                guard let peerId else {
+                    completion(false, "no chat matches \(query)", ["candidates": candidates])
+                    return
+                }
+                let isVideo = relayDebugFlag(command["video"]) ?? false
+                let _ = (phoneCall(context: context, peerId: peerId, isVideo: isVideo) |> deliverOnMainQueue).start(next: { result in
+                    applyUIPCallResult(context, result)
+                    let kind: String
+                    switch result {
+                    case .success:
+                        kind = "success"
+                    case .samePeer:
+                        kind = "samePeer"
+                    case .fail:
+                        kind = "fail"
+                    }
+                    completion(true, nil, ["peerId": "\(peerId.toInt64())", "title": title, "video": isVideo, "result": kind])
+                })
+            }
+        })
+        RelayDebugRemote.register("call-state", { [weak self] _, completion in
+            guard let shared = self?.relayDebugShared else {
+                completion(false, "no account", [:])
+                return
+            }
+            var extra: [String: Any] = MainActor.assumeIsolated {
+                RelayCallDebug.info(peerCall: shared.p2pCall, groupCall: shared.getCrossAccountGroupCall()?.call)
+            }
+            extra["hasActiveCall"] = shared.hasActiveCall
+            extra["permissions"] = ["microphone": AVCaptureDevice.authorizationStatus(for: .audio).rawValue, "camera": AVCaptureDevice.authorizationStatus(for: .video).rawValue, "screen": CGPreflightScreenCaptureAccess()]
+            extra["windows"] = relayDebugWindows()
+            if let screen = shared.peerCall, let window = screen.window {
+                extra["peerCallScreen"] = ["frame": NSStringFromRect(window.frame), "visible": window.isVisible, "key": window.isKeyWindow]
+            }
+            if let session = shared.p2pCall {
+                var info: [String: Any] = ["peerId": "\(session.peerId.toInt64())", "peer": session.peer?.displayTitle ?? "", "isOutgoing": session.isOutgoing, "isVideo": session.isVideo]
+                _ = (session.state |> take(1)).start(next: { state in
+                    info["state"] = relayDebugCallState(state)
+                })
+                _ = (session.canBeRemoved |> take(1)).start(next: { value in
+                    info["canBeRemoved"] = value
+                })
+                extra["telegramPeerCall"] = info
+            }
+            guard let group = shared.getCrossAccountGroupCall() else {
+                completion(true, nil, extra)
+                return
+            }
+            let call = group.call
+            extra["groupWindow"] = ["frame": NSStringFromRect(group.window.window.frame), "visible": group.window.window.isVisible, "key": group.window.window.isKeyWindow, "title": group.window.window.title]
+            _ = (combineLatest(queue: .mainQueue(), call.state, call.members, call.invitedPeers, call.summaryState) |> take(1)).start(next: { state, members, invited, summary in
+                var info: [String: Any] = ["peerId": call.peerId.map { "\($0.toInt64())" } ?? NSNull(), "peer": call.peer?.displayTitle ?? NSNull()]
+                info["networkState"] = "\(state.networkState)"
+                info["muted"] = state.muteState != nil
+                info["title"] = state.title ?? NSNull()
+                info["canManageCall"] = state.canManageCall
+                info["sources"] = ["video": state.sources.video != nil, "screencast": state.sources.screencast != nil]
+                info["members"] = (members?.participants ?? []).map { participant -> [String: Any] in
+                    let peerId = participant.peer?.id
+                    return ["peer": participant.peer?._asPeer().displayTitle ?? NSNull(), "peerId": peerId.map { "\($0.toInt64())" } ?? NSNull(), "muted": participant.muteState != nil, "video": participant.videoDescription?.endpointId ?? NSNull(), "presentation": participant.presentationDescription?.endpointId ?? NSNull(), "speaking": peerId.map { members?.speakingParticipants.contains($0) ?? false } ?? false, "activity": participant.activityTimestamp ?? NSNull()]
+                }
+                info["totalCount"] = members?.totalCount ?? 0
+                info["invited"] = invited.map { "\($0.id.toInt64()) \($0.state)" }
+                info["summaryParticipantCount"] = summary?.participantCount ?? 0
+                extra["telegramGroupCall"] = info
+                completion(true, nil, extra)
+            })
+        })
+        RelayDebugRemote.register("call-accept", { [weak self] _, completion in
+            guard let session = self?.relayDebugShared?.p2pCall else {
+                completion(false, "no call", [:])
+                return
+            }
+            session.acceptCallSession()
+            completion(true, nil, [:])
+        })
+        let hangup: RelayDebugRemote.Handler = { [weak self] command, completion in
+            guard let shared = self?.relayDebugShared else {
+                completion(false, "no account", [:])
+                return
+            }
+            if let session = shared.p2pCall {
+                session.setToRemovableState()
+                _ = session.hangUpCurrentCall().start()
+                completion(true, nil, ["kind": "peer"])
+            } else if let group = shared.getCrossAccountGroupCall() {
+                if relayDebugFlag(command["end"]) == true {
+                    _ = shared.endGroupCall(terminate: true).start()
+                } else {
+                    group.leave()
+                }
+                completion(true, nil, ["kind": "group"])
+            } else {
+                completion(false, "no call", [:])
+            }
+        }
+        RelayDebugRemote.register("call-decline", hangup)
+        RelayDebugRemote.register("call-hangup", hangup)
+        RelayDebugRemote.register("call-mute", { [weak self] command, completion in
+            guard let shared = self?.relayDebugShared else {
+                completion(false, "no account", [:])
+                return
+            }
+            let wanted = relayDebugFlag(command["value"])
+            if let session = shared.p2pCall {
+                _ = (session.state |> take(1) |> deliverOnMainQueue).start(next: { state in
+                    if wanted == nil || wanted != state.isMuted {
+                        session.toggleMute()
+                    }
+                    completion(true, nil, ["wasMuted": state.isMuted])
+                })
+            } else if let group = shared.getCrossAccountGroupCall() {
+                _ = (group.call.isMuted |> take(1) |> deliverOnMainQueue).start(next: { isMuted in
+                    let mute = wanted ?? !isMuted
+                    group.call.setIsMuted(action: mute ? .muted(isPushToTalkActive: false) : .unmuted)
+                    completion(true, nil, ["wasMuted": isMuted])
+                })
+            } else {
+                completion(false, "no call", [:])
+            }
+        })
+        RelayDebugRemote.register("call-video", { [weak self] command, completion in
+            guard let shared = self?.relayDebugShared else {
+                completion(false, "no account", [:])
+                return
+            }
+            let on = relayDebugFlag(command["value"]) ?? true
+            if let session = shared.p2pCall {
+                if on {
+                    session.requestVideo()
+                } else {
+                    session.disableVideo()
+                }
+                completion(true, nil, ["kind": "peer"])
+            } else if let group = shared.getCrossAccountGroupCall() {
+                if on {
+                    let devices = CallsCoreHooks.shared.devicesContext(shared)
+                    guard let device = devices.currentCameraId.flatMap({ AVCaptureDevice(uniqueID: $0) }) ?? AVCaptureDevice.default(for: .video) else {
+                        completion(false, "no camera", [:])
+                        return
+                    }
+                    let source = CameraCaptureDevice(device)
+                    group.call.requestVideo(deviceId: source.deviceIdKey(), source: source)
+                    completion(true, nil, ["kind": "group", "camera": device.localizedName])
+                } else {
+                    group.call.disableVideo()
+                    completion(true, nil, ["kind": "group"])
+                }
+            } else {
+                completion(false, "no call", [:])
+            }
+        })
+        RelayDebugRemote.register("call-screen", { [weak self] command, completion in
+            guard let shared = self?.relayDebugShared else {
+                completion(false, "no account", [:])
+                return
+            }
+            let on = relayDebugFlag(command["value"]) ?? true
+            if let session = shared.p2pCall {
+                let result = session.toggleScreenCapture()
+                completion(result == nil, result.map { "\($0)" }, ["kind": "peer", "screenCaptureAccess": CGPreflightScreenCaptureAccess(), "windows": relayDebugWindows()])
+            } else if let group = shared.getCrossAccountGroupCall() {
+                if on {
+                    guard let source = DesktopCaptureSourceManagerMac(_s: ()).list().first else {
+                        completion(false, "no display", [:])
+                        return
+                    }
+                    group.call.requestScreencast(deviceId: source.deviceIdKey(), source: source)
+                } else {
+                    group.call.disableScreencast()
+                }
+                completion(true, nil, ["kind": "group", "screenCaptureAccess": CGPreflightScreenCaptureAccess()])
+            } else {
+                completion(false, "no call", [:])
+            }
+        })
+        RelayDebugRemote.register("join-call", { [weak self] command, completion in
+            guard let context = self?.contextValue?.context, let query = command["channel"] ?? command["value"] else {
+                completion(false, "no account or channel", [:])
+                return
+            }
+            relayDebugFindPeer(context, query) { peerId, title, candidates in
+                guard let peerId else {
+                    completion(false, "no chat matches \(query)", ["candidates": candidates])
+                    return
+                }
+                relayDebugLastPeerId = peerId
+                navigateToChat(navigation: context.bindings.rootNavigation(), context: context, chatLocation: .peer(peerId))
+                var attempts = 0
+                func attempt() {
+                    attempts += 1
+                    if let controller = context.bindings.rootNavigation().controller as? ChatInterfaceController, controller.chatInteraction.peerId == peerId, let groupCall = controller.chatInteraction.presentation.groupCall {
+                        controller.chatInteraction.joinGroupCall(groupCall.activeCall, groupCall.joinHash)
+                        completion(true, nil, ["peerId": "\(peerId.toInt64())", "title": title, "panelParticipants": groupCall.data?.participantCount ?? -1, "panelTop": (groupCall.data?.topParticipants ?? []).map { $0.peer?._asPeer().displayTitle ?? "" }])
+                    } else if attempts < 25 {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: attempt)
+                    } else {
+                        completion(false, "the chat shows no join panel", ["peerId": "\(peerId.toInt64())", "title": title])
+                    }
+                }
+                attempt()
+            }
+        })
+        RelayDebugRemote.register("messages", { [weak self] command, completion in
+            guard let context = self?.contextValue?.context, let peerId = relayDebugLastPeerId else {
+                completion(false, "no account or opened chat", [:])
+                return
+            }
+            let limit = Int(command["count"] ?? "6") ?? 6
+            let _ = (context.account.postbox.transaction { transaction -> [[String: Any]] in
+                var result: [[String: Any]] = []
+                transaction.scanTopMessages(peerId: peerId, namespace: Namespaces.Message.Cloud, limit: limit, { message in
+                    var item: [String: Any] = ["id": message.id.id, "text": message.text, "author": message.author?.displayTitle ?? "", "incoming": message.flags.contains(.Incoming), "timestamp": message.timestamp]
+                    for media in message.media {
+                        if let action = media as? TelegramMediaAction {
+                            item["action"] = "\(action.action)"
+                        } else {
+                            item["media"] = String(describing: type(of: media))
+                        }
+                    }
+                    result.append(item)
+                    return true
+                })
+                return result
+            } |> deliverOnMainQueue).start(next: { messages in
+                completion(true, nil, ["messages": messages])
             })
         })
     }

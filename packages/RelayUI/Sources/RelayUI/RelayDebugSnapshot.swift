@@ -65,7 +65,7 @@ public enum RelayDebugSnapshot {
                         try? cached.write(to: URL(fileURLWithPath: (output as NSString).appendingPathComponent("window-\(index)-cached.png")))
                     }
                 }
-                var lines: [String] = []
+                var lines: [String] = ["# " + String(describing: type(of: window)) + " title=\"" + window.title + "\" frame=" + NSStringFromRect(window.frame) + (window.isKeyWindow ? " key" : "")]
                 self.describe(view, depth: 0, into: &lines)
                 try? lines.joined(separator: "\n").write(toFile: (output as NSString).appendingPathComponent("window-\(index).txt"), atomically: true, encoding: .utf8)
                 index += 1

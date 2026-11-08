@@ -23,10 +23,15 @@ final class LiveKitVideoSource: VideoSource {
     private weak var engine: RelayRoomEngine?
     private let resolveTarget: @MainActor () -> RelayVideoTarget?
     private var sink: RelayVideoSink?
-    private var attachedSid: String?
+    private(set) var attachedSid: String?
+    private let framesReceived = Atomic<Int>(value: 0)
+    private let lastFrameSize = Atomic<CGSize>(value: .zero)
+    private(set) var framesDelivered = 0
+    let label: String
 
     @MainActor
-    init(engine: RelayRoomEngine, viewSize: CGSize, resolveTarget: @escaping @MainActor () -> RelayVideoTarget?) {
+    init(engine: RelayRoomEngine, viewSize: CGSize, label: String, resolveTarget: @escaping @MainActor () -> RelayVideoTarget?) {
+        self.label = label
         self.engine = engine
         self.resolveTarget = resolveTarget
         self.device = MetalEngine.shared.device
@@ -57,6 +62,11 @@ final class LiveKitVideoSource: VideoSource {
         }
     }
 
+    var debugInfo: [String: Any] {
+        let size = self.lastFrameSize.with { $0 }
+        return ["label": self.label, "trackSid": self.attachedSid ?? NSNull(), "framesReceived": self.framesReceived.with { $0 }, "framesDelivered": self.framesDelivered, "listeners": self.listeners.copyItems().count, "frameWidth": Int(size.width), "frameHeight": Int(size.height)]
+    }
+
     @MainActor
     func setViewSize(_ size: CGSize) {
         self.sink?.viewSize = size
@@ -77,6 +87,8 @@ final class LiveKitVideoSource: VideoSource {
     }
 
     private func received(_ frame: RelayVideoFrame) {
+        _ = self.framesReceived.modify { $0 + 1 }
+        _ = self.lastFrameSize.swap(CGSize(width: frame.width, height: frame.height))
         if self.pendingFrame.swap(true) {
             return
         }
@@ -91,6 +103,7 @@ final class LiveKitVideoSource: VideoSource {
                     return
                 }
                 self.currentOutput = output
+                self.framesDelivered += 1
                 for listener in self.listeners.copyItems() {
                     listener()
                 }
@@ -203,5 +216,9 @@ final class RelayVideoSourceRegistry {
         for entry in self.entries {
             entry.source?.refresh()
         }
+    }
+
+    var sources: [LiveKitVideoSource] {
+        return self.entries.compactMap { $0.source }
     }
 }

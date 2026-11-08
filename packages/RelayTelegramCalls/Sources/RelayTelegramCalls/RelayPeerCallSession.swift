@@ -35,7 +35,7 @@ public final class RelayPeerCallSession: PresentationPeerCall {
     fileprivate let audioLevelPromise = ValuePromise<Float>(0, ignoreRepeated: true)
     fileprivate let canBeRemovedPromise = ValuePromise<Bool>(false, ignoreRepeated: true)
     private let peerDisposable = MetaDisposable()
-    private var core: RelayPeerCallCore?
+    private(set) var core: RelayPeerCallCore?
 
     public var peer: Peer? {
         return self.peerValue.with { $0 }
@@ -244,10 +244,10 @@ final class RelayPeerCallCore {
     private let sharedContext: any SharedAccountContextProtocol
     private let isOutgoing: Bool
     private let relayAccount: MattermostRelayCallsAccount
-    private let media: RelayRoomEngine
-    private let mode: Mode
-    private let tones = RelayTonePlayer()
-    private let videoSources = RelayVideoSourceRegistry()
+    let media: RelayRoomEngine
+    let mode: Mode
+    let tones = RelayTonePlayer()
+    let videoSources = RelayVideoSourceRegistry()
     private let peers: RelayPeerResolver
     private let devices: DevicesContext
     private var observation: RelayCancellable?
@@ -627,7 +627,7 @@ final class RelayPeerCallCore {
         guard case let .direct(call) = self.mode else {
             return nil
         }
-        let source = LiveKitVideoSource(engine: self.media, viewSize: CGSize(width: 1280, height: 720), resolveTarget: { [weak call] in
+        let source = LiveKitVideoSource(engine: self.media, viewSize: CGSize(width: 1280, height: 720), label: isIncoming ? "remote" : "local", resolveTarget: { [weak call] in
             guard let call else {
                 return nil
             }

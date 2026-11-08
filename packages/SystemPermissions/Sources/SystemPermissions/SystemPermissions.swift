@@ -40,6 +40,13 @@ public func requestMediaPermission(_ type: AVFoundation.AVMediaType) -> Signal<B
         return Signal { subscriber in
             let status = AVCaptureDevice.authorizationStatus(for: type)
             var cancelled: Bool = false
+            #if DEBUG
+            if status == .notDetermined, ProcessInfo.processInfo.environment["RELAY_DEBUG_NO_PERMISSION_PROMPTS"] == "1" {
+                subscriber.putNext(true)
+                subscriber.putCompletion()
+                return ActionDisposable {}
+            }
+            #endif
             switch status {
             case .notDetermined:
                 AVCaptureDevice.requestAccess(for: type, completionHandler: { completed in

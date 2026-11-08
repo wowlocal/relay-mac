@@ -27,7 +27,7 @@ func relayOnMain(_ body: @escaping @MainActor () -> Void) {
 
 final class RelayTonePlayer {
     private var player: CallAudioPlayer?
-    private var current: CallTone?
+    private(set) var current: CallTone?
 
     func play(_ tone: CallTone?) {
         if tone == self.current {

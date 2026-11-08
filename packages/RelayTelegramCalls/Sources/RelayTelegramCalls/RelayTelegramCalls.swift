@@ -6,8 +6,16 @@ import TelegramContext
 import TelegramCallsCore
 import MattermostSync
 import RelayCallsCore
+import LiveKit
 
 public func installRelayTelegramCalls() {
+    #if DEBUG
+    if ProcessInfo.processInfo.environment["RELAY_DEBUG_NO_AUDIO_ENGINE"] == "1" {
+        DispatchQueue.global(qos: .userInitiated).async {
+            try? AudioManager.shared.setEngineAvailability(.none)
+        }
+    }
+    #endif
     RelayCallHooks.install(RelayCallHooks(startPeerCall: { sharedContext, account, peerId, isVideo in
         return Signal<Void, NoError>.single(Void())
         |> deliverOnMainQueue

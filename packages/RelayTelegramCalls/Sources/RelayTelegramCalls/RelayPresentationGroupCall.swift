@@ -45,7 +45,7 @@ public final class RelayPresentationGroupCall: PresentationGroupCall {
     fileprivate let callInfoPromise = ValuePromise<GroupCallInfo?>(nil, ignoreRepeated: true)
     fileprivate let stateVersionPromise = ValuePromise<Int>(0, ignoreRepeated: true)
     fileprivate let isSpeakingPromise = ValuePromise<Bool>(false, ignoreRepeated: true)
-    private var core: RelayGroupCallCore?
+    private(set) var core: RelayGroupCallCore?
 
     public var peer: Peer? {
         return self.peerValue.with { $0 }
@@ -351,11 +351,11 @@ final class RelayGroupCallCore {
     private weak var call: RelayPresentationGroupCall?
     private let account: Account
     private let relayAccount: MattermostRelayCallsAccount
-    private let media: RelayRoomEngine
-    private let controller: RelayGroupCall
+    let media: RelayRoomEngine
+    let controller: RelayGroupCall
     private let peers: RelayPeerResolver
     private let devices: DevicesContext
-    private let videoSources = RelayVideoSourceRegistry()
+    let videoSources = RelayVideoSourceRegistry()
     private var sourcesByEndpoint: [String: [WeakVideoSource]] = [:]
     private var requestedQuality: [String: PresentationGroupCallRequestedVideo.Quality] = [:]
     private var suspended = false
@@ -661,7 +661,7 @@ final class RelayGroupCallCore {
         }
         let identity = String(parts[0])
         let controller = self.controller
-        let source = LiveKitVideoSource(engine: self.media, viewSize: CGSize(width: 1280, height: 720), resolveTarget: { [weak controller] in
+        let source = LiveKitVideoSource(engine: self.media, viewSize: CGSize(width: 1280, height: 720), label: endpointId, resolveTarget: { [weak controller] in
             guard let controller else {
                 return nil
             }
