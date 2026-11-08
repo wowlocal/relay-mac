@@ -26,22 +26,34 @@ func relayOnMain(_ body: @escaping @MainActor () -> Void) {
 }
 
 final class RelayTonePlayer {
-    private var player: CallAudioPlayer?
+    private final class Output {
+        var player: CallAudioPlayer?
+    }
+    private static let queue = DispatchQueue(label: "org.relaychat.RelayTonePlayer", qos: .userInitiated)
+    private let output = Output()
     private(set) var current: CallTone?
 
     func play(_ tone: CallTone?) {
         if tone == self.current {
             return
         }
-        self.player?.stop()
-        self.player = nil
         self.current = tone
-        guard let tone, let url = RelayTonePlayer.url(for: tone) else {
-            return
+        let output = self.output
+        let url = tone.flatMap { RelayTonePlayer.url(for: $0) }
+        let loops = tone.map { RelayTonePlayer.loops(for: $0) } ?? 0
+        RelayTonePlayer.queue.async {
+            output.player?.stop()
+            output.player = url.map { CallAudioPlayer($0, loops: loops) }
+            output.player?.play()
         }
-        let player = CallAudioPlayer(url, loops: RelayTonePlayer.loops(for: tone))
-        self.player = player
-        player.play()
+    }
+
+    deinit {
+        let output = self.output
+        RelayTonePlayer.queue.async {
+            output.player?.stop()
+            output.player = nil
+        }
     }
 
     func stop() {
@@ -151,13 +163,19 @@ final class RelayPeerResolver {
 }
 
 enum RelayAudioDevices {
+    private static let queue = DispatchQueue(label: "org.relaychat.RelayAudioDevices", qos: .userInitiated)
+
     static func apply(_ devices: DevicesContext) {
-        let manager = AudioManager.shared
-        if let id = devices.currentMicroId, let device = manager.inputDevices.first(where: { $0.deviceId == id }) {
-            manager.inputDevice = device
-        }
-        if let id = devices.currentOutputId, let device = manager.outputDevices.first(where: { $0.deviceId == id }) {
-            manager.outputDevice = device
+        let microId = devices.currentMicroId
+        let outputId = devices.currentOutputId
+        self.queue.async {
+            let manager = AudioManager.shared
+            if let id = microId, let device = manager.inputDevices.first(where: { $0.deviceId == id }) {
+                manager.inputDevice = device
+            }
+            if let id = outputId, let device = manager.outputDevices.first(where: { $0.deviceId == id }) {
+                manager.outputDevice = device
+            }
         }
     }
 }
