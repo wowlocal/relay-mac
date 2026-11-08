@@ -22,6 +22,7 @@ public enum RelayCallDebug {
                 info["controller"] = self.group(call.snapshot)
             }
             info["tone"] = core.tones.current.map { "\($0)" } ?? NSNull()
+            info["screenShareError"] = core.screenShareError ?? NSNull()
             info["media"] = self.media(core.media)
             info["videoSources"] = core.videoSources.sources.map { $0.debugInfo }
             result["peerCall"] = info

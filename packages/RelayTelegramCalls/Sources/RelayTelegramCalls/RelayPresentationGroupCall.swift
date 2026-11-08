@@ -723,7 +723,7 @@ final class RelayGroupCallCore {
         self.publish()
         let media = self.media
         Task { @MainActor [weak self] in
-            guard let target = await relayScreenShareSource(media: media, source: source) else {
+            guard let target = await relayScreenShareSource(source: source) else {
                 self?.screencastFailed()
                 return
             }

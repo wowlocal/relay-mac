@@ -260,6 +260,7 @@ final class RelayPeerCallCore {
     private var terminated = false
     private var removable = false
     private weak var captureSelectWindow: NSWindow?
+    private(set) var screenShareError: String?
     private var channelPeer: Peer?
     private let channelPeerDisposable = MetaDisposable()
 
@@ -612,14 +613,20 @@ final class RelayPeerCallCore {
             return
         }
         let media = self.media
-        Task { @MainActor in
-            guard let target = await relayScreenShareSource(media: media, source: source) else {
+        Task { @MainActor [weak self] in
+            guard let target = await relayScreenShareSource(source: source) else {
+                self?.screenShareError = "no ScreenCaptureKit source for \(source.title())"
                 return
             }
             if call.snapshot.isCameraEnabled {
                 call.setCameraEnabled(false)
             }
-            try? await media.shareScreen(source: target)
+            do {
+                try await media.shareScreen(source: target)
+                self?.screenShareError = nil
+            } catch {
+                self?.screenShareError = "\(error)"
+            }
         }
     }
 
@@ -675,8 +682,8 @@ func relayTerminationReason(_ reason: RelayDirectCall.EndReason) -> CallSessionT
 }
 
 @MainActor
-func relayScreenShareSource(media: RelayRoomEngine, source: VideoSourceMac) async -> MacOSScreenCaptureSource? {
-    guard let sources = try? await media.screenShareSources() else {
+func relayScreenShareSource(source: VideoSourceMac) async -> MacOSScreenCaptureSource? {
+    guard let sources = try? await MacOSScreenCapturer.sources(for: .any, includeCurrentApplication: true) else {
         return nil
     }
     guard let desktop = source as? DesktopCaptureSourceMac else {
