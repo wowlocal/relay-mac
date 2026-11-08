@@ -4,6 +4,8 @@
 # and stapled. The notes are the release's (build/updates/Relay-<version>-<build>.html). tools/relay-mac-release.sh
 # runs it after the appcast upload; on its own it takes the app (default build/Relay.app).
 #
+# RELAY_PRERELEASE=1 marks the release as a pre-release (not latest); RELAY_UPDATES_DIR is where the notes are.
+#
 # Run in a GUI session (codesign). Log: build/relay-mac-github-release.log, ending with exit=N.
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -19,7 +21,7 @@ ASC_KEY_ID="$(basename "$ASC_KEY" .p8 | sed 's/^ApiKey_//')"
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")" || fail "no app at $APP"
 BUILD="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")"
 TAG="relay-mac-$VERSION-$BUILD"
-NOTES_HTML="build/updates/Relay-$VERSION-$BUILD.html"
+NOTES_HTML="${RELAY_UPDATES_DIR:-build/updates}/Relay-$VERSION-$BUILD.html"
 [ -f "$NOTES_HTML" ] || fail "no release notes at $NOTES_HTML"
 xcrun stapler validate -q "$APP" || fail "$APP is not notarized and stapled (tools/relay-mac-release.sh makes it)"
 
@@ -59,7 +61,8 @@ PY
 if gh release view "$TAG" -R "$REPO" >/dev/null 2>&1; then
     gh release upload "$TAG" "$DMG" --clobber -R "$REPO" || fail "uploading the DMG"
 else
-    gh release create "$TAG" "$DMG" -R "$REPO" --title "Relay $VERSION ($BUILD)" --notes-file "$NOTES_MD" --latest \
+    if [ "${RELAY_PRERELEASE:-}" = 1 ]; then RELEASE_KIND=(--prerelease --latest=false); else RELEASE_KIND=(--latest); fi
+    gh release create "$TAG" "$DMG" -R "$REPO" --title "Relay $VERSION ($BUILD)" --notes-file "$NOTES_MD" "${RELEASE_KIND[@]}" \
         || fail "creating the release"
 fi
 echo "released: https://github.com/$REPO/releases/tag/$TAG"

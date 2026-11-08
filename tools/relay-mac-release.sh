@@ -16,6 +16,10 @@
 #      the appcast is made but nothing is uploaded. Then the tag relay-mac-<version>-<build> is pushed and
 #      tools/relay-mac-github-release.sh makes the GitHub release with a notarized DMG.
 #
+# RELAY_PRERELEASE=1 makes a GitHub pre-release only: the zip and notes go to build/prerelease/ (never build/updates/,
+# which every appcast is generated from), nothing is uploaded to the bucket, so no installed Relay is offered the
+# build, and the tag and GitHub release (marked pre-release, not latest) are made as usual.
+#
 # Run in a GUI session (codesign). Log: build/relay-mac-release.log, ending with exit=N.
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -77,12 +81,14 @@ spctl -a -vv build/Relay.app 2>&1 | head -2
 
 echo "== zip"
 ZIP_NAME="Relay-$VERSION-$BUILD.zip"
-mkdir -p build/updates
-rm -f "build/updates/$ZIP_NAME"
-ditto -c -k --keepParent build/Relay.app "build/updates/$ZIP_NAME"
+UPDATES_DIR="build/updates"
+[ "${RELAY_PRERELEASE:-}" = 1 ] && UPDATES_DIR="build/prerelease"
+mkdir -p "$UPDATES_DIR"
+rm -f "$UPDATES_DIR/$ZIP_NAME"
+ditto -c -k --keepParent build/Relay.app "$UPDATES_DIR/$ZIP_NAME"
 
 echo "== release notes"
-NOTES_FILE="build/updates/Relay-$VERSION-$BUILD.html"
+NOTES_FILE="$UPDATES_DIR/Relay-$VERSION-$BUILD.html"
 PREVIOUS_TAG="$(git describe --tags --abbrev=0 --match 'relay-mac-*' 2>/dev/null || true)"
 RELAY_NOTES="${RELAY_NOTES:-}" PREVIOUS_TAG="$PREVIOUS_TAG" python3 -I - "$NOTES_FILE" <<'PY' || fail "release notes"
 import html, os, subprocess, sys
