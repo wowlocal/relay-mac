@@ -123,7 +123,8 @@ public final class ContextAddReactionsListView : View, StickerFramesCollector  {
             }))
                                     
 
-            let signal = reaction.selectAnimation(context) |> mapToSignal { file in
+            let playsAnimations = self.playsAnimations
+            let signal = reaction.selectAnimation(context) |> filter { _ in playsAnimations } |> mapToSignal { file in
                 if let resource = file.resource as? LocalBundleResource, let path = resource.path {
                     return .single(MediaResourceData(path: path, offset: 0, size: 0, complete: true))
                 } else {
@@ -210,6 +211,13 @@ public final class ContextAddReactionsListView : View, StickerFramesCollector  {
             return context.isLite(.emoji)
         }
         
+        private var playsAnimations: Bool {
+            if case let .builtin(_, _, selectFile, _, _) = self.reaction {
+                return selectFile.isAnimatedSticker
+            }
+            return true
+        }
+        
         private func apply(_ data: Data, key: String, policy: LottiePlayPolicy) {
             let animation = LottieAnimation(compressed: data, key: LottieAnimationEntryKey(key: .bundle("reaction_\(reaction.value)_\(key)"), size: player.frame.size), type: .lottie, cachePurpose: .none, playPolicy: policy, maximumFps: 60, runOnQueue: Queue(), metalSupport: false)
             player.set(animation, reset: true, saveContext: true, animated: false)
@@ -275,7 +283,7 @@ public final class ContextAddReactionsListView : View, StickerFramesCollector  {
           
             
             
-            if let appearAnimation = reaction.selectedAnimation {
+            if let appearAnimation = reaction.selectedAnimation, self.playsAnimations {
                 let signal = context.account.postbox.mediaBox.resourceData(appearAnimation.resource, attemptSynchronously: true)
                 |> filter {
                     $0.complete
