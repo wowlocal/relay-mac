@@ -1886,6 +1886,7 @@ extension AppDelegate {
             })
         })
         self.installRelayCallDebugRemote()
+        self.installRelayChatDebugRemote()
     }
 }
 #endif
@@ -2285,6 +2286,251 @@ extension AppDelegate {
                 return result
             } |> deliverOnMainQueue).start(next: { messages in
                 completion(true, nil, ["messages": messages])
+            })
+        })
+    }
+}
+#endif
+
+#if DEBUG
+private func relayDebugCollect(_ view: NSView, _ match: (NSView) -> Bool, _ found: inout [NSView]) {
+    if view.isHidden {
+        return
+    }
+    if match(view) {
+        found.append(view)
+    }
+    for subview in view.subviews {
+        relayDebugCollect(subview, match, &found)
+    }
+}
+
+private func relayDebugVisibleViews(_ match: (NSView) -> Bool) -> [NSView] {
+    var found: [NSView] = []
+    for window in NSApp.windows where window.isVisible {
+        if let root = window.contentView?.superview ?? window.contentView {
+            relayDebugCollect(root, match, &found)
+        }
+    }
+    return found
+}
+
+private func relayDebugDrawnLayers(_ layer: CALayer) -> Int {
+    if layer.isHidden || layer.opacity <= 0.01 {
+        return 0
+    }
+    var count = layer.contents != nil ? 1 : 0
+    for sublayer in layer.sublayers ?? [] {
+        count += relayDebugDrawnLayers(sublayer)
+    }
+    return count
+}
+
+private func relayDebugLayerInfo(_ layer: CALayer, depth: Int) -> [String: Any] {
+    var info: [String: Any] = ["class": String(describing: type(of: layer)), "frame": NSStringFromRect(layer.frame), "hidden": layer.isHidden, "opacity": layer.opacity, "contents": layer.contents != nil]
+    if depth < 4, let sublayers = layer.sublayers, !sublayers.isEmpty {
+        info["sublayers"] = sublayers.map { relayDebugLayerInfo($0, depth: depth + 1) }
+    }
+    return info
+}
+
+private func relayDebugViewInfo(_ view: NSView, depth: Int) -> [String: Any] {
+    var info: [String: Any] = ["class": String(describing: type(of: view)), "frame": NSStringFromRect(view.frame), "hidden": view.isHidden, "alpha": view.alphaValue]
+    if let control = view as? Control {
+        info["controlState"] = "\(control.controlState)"
+    }
+    if let player = view as? LottiePlayerView {
+        info["playerState"] = "\(player.currentState)"
+        info["hasAnimation"] = player.animation != nil
+    }
+    if let text = relayDebugText(view) {
+        info["text"] = String(text.prefix(80))
+    }
+    if let layer = view.layer {
+        info["drawnLayers"] = relayDebugDrawnLayers(layer)
+        let own = (layer.sublayers ?? []).filter { sublayer in !view.subviews.contains(where: { $0.layer === sublayer }) }
+        if !own.isEmpty {
+            info["layers"] = own.map { relayDebugLayerInfo($0, depth: 1) }
+        }
+    }
+    if depth < 5, !view.subviews.isEmpty {
+        info["subviews"] = view.subviews.map { relayDebugViewInfo($0, depth: depth + 1) }
+    }
+    return info
+}
+
+private func relayDebugMatching(_ command: [String: String]) -> [NSView] {
+    let className = command["class"]?.lowercased()
+    let text = command["text"]?.lowercased()
+    let contains = command["contains"] == "1"
+    return relayDebugVisibleViews { view in
+        if let className, !String(describing: type(of: view)).lowercased().contains(className) {
+            return false
+        }
+        if let text {
+            guard let string = relayDebugText(view)?.lowercased() else {
+                return false
+            }
+            return contains ? string.contains(text) : string == text
+        }
+        return true
+    }
+}
+
+extension AppDelegate {
+    private var relayDebugChat: ChatController? {
+        return self.contextValue?.context.bindings.rootNavigation().controller as? ChatController
+    }
+
+    func installRelayChatDebugRemote() {
+        RelayDebugRemote.register("views", { command, completion in
+            let views = relayDebugMatching(command)
+            let limit = Int(command["count"] ?? "5") ?? 5
+            completion(true, nil, ["matches": views.count, "views": views.prefix(limit).map { relayDebugViewInfo($0, depth: 3) }])
+        })
+        RelayDebugRemote.register("hover", { command, completion in
+            let controls = relayDebugMatching(command).compactMap { $0 as? Control }
+            let index = Int(command["index"] ?? "0") ?? 0
+            guard index < controls.count else {
+                completion(false, "no control", ["matches": controls.count])
+                return
+            }
+            let control = controls[index]
+            let before = relayDebugViewInfo(control, depth: 0)
+            let state: ControlState
+            switch command["state"]?.lowercased() {
+            case "normal"?:
+                state = .Normal
+            case "highlight"?:
+                state = .Highlight
+            default:
+                state = .Hover
+            }
+            control.controlState = state
+            let wait = Double(command["wait"] ?? "1.0") ?? 1.0
+            DispatchQueue.main.asyncAfter(deadline: .now() + wait, execute: {
+                completion(true, nil, ["matches": controls.count, "class": String(describing: type(of: control)), "before": before, "after": relayDebugViewInfo(control, depth: 0)])
+            })
+        })
+        RelayDebugRemote.register("press", { command, completion in
+            let controls = relayDebugMatching(command).compactMap { $0 as? Control }
+            let index = Int(command["index"] ?? "0") ?? 0
+            guard index < controls.count else {
+                completion(false, "no control", ["matches": controls.count])
+                return
+            }
+            controls[index].send(event: .Click)
+            completion(true, nil, ["matches": controls.count, "class": String(describing: type(of: controls[index]))])
+        })
+        RelayDebugRemote.register("close-menus", { _, completion in
+            AppMenu.closeAll()
+            completion(true, nil, [:])
+        })
+        RelayDebugRemote.register("rightclick", { command, completion in
+            let views = relayDebugMatching(command)
+            let index = Int(command["index"] ?? "0") ?? 0
+            guard index < views.count else {
+                completion(false, "no view", ["matches": views.count])
+                return
+            }
+            var current: NSView? = views[index]
+            while let view = current, !(view is TableRowView) {
+                current = view.superview
+            }
+            guard let row = current as? TableRowView, let window = row.window else {
+                completion(false, "no row around the view", ["matches": views.count])
+                return
+            }
+            let target = views[index]
+            let point = target.convert(NSMakePoint(target.bounds.midX, target.bounds.midY), to: nil)
+            guard let event = NSEvent.mouseEvent(with: .rightMouseDown, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime, windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1, pressure: 1) else {
+                completion(false, "no event", [:])
+                return
+            }
+            row.showContextMenu(event)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: {
+                let titles = relayDebugVisibleViews { $0 is AppMenuRowView }.compactMap { (($0 as? AppMenuRowView)?.item as? AppMenuRowItem)?.item.title }
+                completion(true, nil, ["row": String(describing: type(of: row)), "menu": titles, "windows": relayDebugWindows()])
+            })
+        })
+        RelayDebugRemote.register("menu-item", { command, completion in
+            guard let text = command["text"] ?? command["value"] else {
+                completion(false, "no text", [:])
+                return
+            }
+            let rows = relayDebugVisibleViews { $0 is AppMenuRowView }.compactMap { $0 as? AppMenuRowView }
+            guard let row = rows.first(where: { ($0.item as? AppMenuRowItem)?.item.title.lowercased() == text.lowercased() }) else {
+                completion(false, "no menu item \(text)", ["menu": rows.compactMap { ($0.item as? AppMenuRowItem)?.item.title }])
+                return
+            }
+            row.invokeClick()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: {
+                completion(true, nil, ["windows": relayDebugWindows()])
+            })
+        })
+        RelayDebugRemote.register("chat-state", { [weak self] _, completion in
+            guard let context = self?.contextValue?.context else {
+                completion(false, "no account", [:])
+                return
+            }
+            let navigation = context.bindings.rootNavigation()
+            var extra: [String: Any] = ["controller": String(describing: type(of: navigation.controller))]
+            if let chat = self?.relayDebugChat {
+                let presentation = chat.chatInteraction.presentation
+                switch chat.chatLocation {
+                case let .peer(peerId):
+                    extra["location"] = "peer \(peerId.toInt64())"
+                case let .thread(data):
+                    extra["location"] = "thread \(data.peerId.toInt64()) \(data.threadId) forum=\(data.isForumPost)"
+                }
+                extra["mode"] = "\(chat.mode)"
+                extra["reply"] = presentation.interfaceState.replyMessageId.map { "\($0.messageId.id)" } ?? NSNull()
+                extra["input"] = presentation.interfaceState.inputState.inputText
+                extra["state"] = "\(presentation.state)"
+                extra["firstResponder"] = chat.window?.firstResponder.map { String(describing: type(of: $0)) } ?? NSNull()
+            }
+            completion(true, nil, extra)
+        })
+        RelayDebugRemote.register("compose", { [weak self] command, completion in
+            guard let chat = self?.relayDebugChat, let text = command["text"] ?? command["value"] ?? (command["clear"] == "1" ? "" : nil) else {
+                completion(false, "no chat or text", [:])
+                return
+            }
+            if command["clear"] == "1" {
+                chat.chatInteraction.setupReplyMessage(nil, nil)
+                chat.chatInteraction.update({ $0.updatedInterfaceState({ $0.withUpdatedInputState(ChatTextInputState()) }) })
+            }
+            _ = chat.chatInteraction.appendText(text)
+            if command["send"] == "1" {
+                chat.chatInteraction.sendMessage(false, nil, nil)
+            }
+            completion(true, nil, ["input": chat.chatInteraction.presentation.interfaceState.inputState.inputText])
+        })
+        RelayDebugRemote.register("chat-messages", { [weak self] command, completion in
+            guard let context = self?.contextValue?.context, let chat = self?.relayDebugChat else {
+                completion(false, "no chat", [:])
+                return
+            }
+            let location = chat.chatLocation
+            let limit = Int(command["count"] ?? "8") ?? 8
+            let _ = (context.account.postbox.transaction { transaction -> [[String: Any]] in
+                var result: [[String: Any]] = []
+                for namespace in [Namespaces.Message.Local, Namespaces.Message.Cloud] {
+                    transaction.scanTopMessages(peerId: location.peerId, namespace: namespace, limit: limit, { message in
+                        var item: [String: Any] = ["id": "\(namespace == Namespaces.Message.Local ? "local" : "cloud") \(message.id.id)", "text": String(message.text.prefix(60)), "threadId": message.threadId.map { "\($0)" } ?? NSNull(), "tags": message.tags.rawValue, "failed": message.flags.contains(.Failed), "unsent": message.flags.contains(.Unsent)]
+                        if let reply = message.attributes.first(where: { $0 is ReplyMessageAttribute }) as? ReplyMessageAttribute {
+                            item["replyTo"] = "\(reply.messageId.id) thread=\(reply.threadMessageId.map { "\($0.id)" } ?? "nil")"
+                        }
+                        if let replies = message.attributes.first(where: { $0 is ReplyThreadMessageAttribute }) as? ReplyThreadMessageAttribute {
+                            item["replies"] = replies.count
+                        }
+                        result.append(item)
+                        return true
+                    })
+                }
+                return result
+            } |> deliverOnMainQueue).start(next: { messages in
+                completion(true, nil, ["location": "\(location)", "messages": messages])
             })
         })
     }
