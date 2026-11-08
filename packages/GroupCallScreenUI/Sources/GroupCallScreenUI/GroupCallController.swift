@@ -617,7 +617,7 @@ private func peerEntries(state: GroupCallUIState, account: Account, arguments: G
     
     let members = state.memberDatas
 
-    var canInvite: Bool = !members.contains(where: { $0.isVertical })
+    var canInvite: Bool = !members.contains(where: { $0.isVertical }) && RelayCallHooks.shared == nil
     
     if canInvite, state.isConference {
         if members.count == conferenceLimit {
