@@ -436,10 +436,12 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
         paths.append(Bundle.main.path(forResource: "sent", ofType:"caf"))
 
         
-        for path in paths {
-            if let path = path {
-                let player = try? AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
-                player?.prepareToPlay()
+        DispatchQueue.global(qos: .utility).async {
+            for path in paths {
+                if let path = path {
+                    let player = try? AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
+                    player?.prepareToPlay()
+                }
             }
         }
         
@@ -1970,6 +1972,14 @@ extension AppDelegate {
                 completion(true, nil, ["accounts": accounts, "hasCurrentAuth": value.currentAuth != nil])
             })
         })
+        RelayDebugRemote.register("logout", { [weak self] command, completion in
+            guard let shared = self?.sharedApplicationContextValue?.sharedContext, let id = command["id"].flatMap(Int64.init) else {
+                completion(false, "no shared context or id", [:])
+                return
+            }
+            _ = logoutFromAccount(id: AccountRecordId(rawValue: id), accountManager: shared.accountManager, alreadyLoggedOutRemotely: false).start()
+            completion(true, nil, [:])
+        })
         RelayDebugRemote.register("switch-account", { [weak self] command, completion in
             guard let shared = self?.sharedApplicationContextValue?.sharedContext, let id = command["id"].flatMap(Int64.init) else {
                 completion(false, "no shared context or id", [:])
@@ -2127,6 +2137,21 @@ extension AppDelegate {
                 extra["telegramGroupCall"] = info
                 completion(true, nil, extra)
             })
+        })
+        RelayDebugRemote.register("call-audio", { _, completion in
+            DispatchQueue.global(qos: .userInitiated).async {
+                let info = RelayCallDebug.audioInfo()
+                DispatchQueue.main.async {
+                    completion(true, nil, info)
+                }
+            }
+        })
+        RelayDebugRemote.register("call-mic-processing", { [weak self] command, completion in
+            let enabled = relayDebugFlag(command["value"]) ?? true
+            let result = MainActor.assumeIsolated {
+                RelayCallDebug.setMicrophoneProcessing(enabled, peerCall: self?.relayDebugShared?.p2pCall)
+            }
+            completion(true, nil, ["result": result])
         })
         RelayDebugRemote.register("call-accept", { [weak self] _, completion in
             guard let session = self?.relayDebugShared?.p2pCall else {

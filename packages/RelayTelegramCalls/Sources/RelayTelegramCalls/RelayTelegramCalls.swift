@@ -9,6 +9,8 @@ import RelayCallsCore
 import LiveKit
 
 public func installRelayTelegramCalls() {
+    RelayCallAudio.install()
+    RelayCallAudio.selectAudioDeviceModule()
     #if DEBUG
     if ProcessInfo.processInfo.environment["RELAY_DEBUG_NO_AUDIO_ENGINE"] == "1" {
         DispatchQueue.global(qos: .userInitiated).async {

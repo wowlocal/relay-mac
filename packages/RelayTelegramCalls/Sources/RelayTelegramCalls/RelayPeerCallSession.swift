@@ -263,6 +263,7 @@ final class RelayPeerCallCore {
     private(set) var screenShareError: String?
     private var channelPeer: Peer?
     private let channelPeerDisposable = MetaDisposable()
+    private var loggedState: String?
 
     init(session: RelayPeerCallSession, relayAccount: MattermostRelayCallsAccount, media: RelayRoomEngine, mode: Mode) {
         self.session = session
@@ -453,6 +454,11 @@ final class RelayPeerCallCore {
             }
         }
         _ = session.relayCallIdValue.swap(callId)
+        let stateLine = "\(state)"
+        if stateLine != self.loggedState {
+            self.loggedState = stateLine
+            relayLog("peer call \(callId ?? "(new)"): \(stateLine)")
+        }
         self.tones.play(tone)
         let videoState: CallState.VideoState = (cameraOn || screenOn) ? .active(cameraAvailable) : .inactive(cameraAvailable)
         session.audioLevelPromise.set(level)

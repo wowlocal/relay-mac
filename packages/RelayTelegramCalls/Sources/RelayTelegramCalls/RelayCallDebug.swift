@@ -8,6 +8,26 @@ import LiveKit
 
 #if DEBUG
 public enum RelayCallDebug {
+    public static func audioInfo() -> [String: Any] {
+        return RelayAudioDebug.info()
+    }
+
+    @MainActor
+    public static func setMicrophoneProcessing(_ enabled: Bool, peerCall: (any PresentationPeerCall)?) -> String {
+        guard let session = peerCall as? RelayPeerCallSession, let core = session.core else {
+            return "no call"
+        }
+        guard let track = core.media.room.localParticipant.audioTracks.first?.track as? LocalAudioTrack else {
+            return "no microphone track"
+        }
+        do {
+            let result = try track.setAudioProcessingOptions(enabled ? AudioProcessingOptions() : .noProcessing)
+            return "\(result)"
+        } catch {
+            return "\(error)"
+        }
+    }
+
     @MainActor
     public static func info(peerCall: (any PresentationPeerCall)?, groupCall: (any PresentationGroupCall)?) -> [String: Any] {
         var result: [String: Any] = [:]

@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import CoreAudio
 import SwiftSignalKit
 import TelegramCore
 import Postbox
@@ -37,6 +38,7 @@ final class RelayTonePlayer {
         if tone == self.current {
             return
         }
+        relayLog("tone: \(self.current.map { "\($0)" } ?? "none") → \(tone.map { "\($0)" } ?? "none")")
         self.current = tone
         let output = self.output
         let url = tone.flatMap { RelayTonePlayer.url(for: $0) }
@@ -163,20 +165,60 @@ final class RelayPeerResolver {
 }
 
 enum RelayAudioDevices {
+    private struct Selection: Equatable {
+        var input: String?
+        var output: String?
+    }
+
     private static let queue = DispatchQueue(label: "org.relaychat.RelayAudioDevices", qos: .userInitiated)
+    private static var applied = Selection()
+    private static let lastAppliedValue = Atomic<String>(value: "")
+
+    static var lastApplied: String {
+        return self.lastAppliedValue.with { $0 }
+    }
 
     static func apply(_ devices: DevicesContext) {
         let microId = devices.currentMicroId
         let outputId = devices.currentOutputId
         self.queue.async {
+            RelayCallAudio.prepareOnAudioQueue()
+            let selection = Selection(input: microId == self.systemInputId() ? nil : microId, output: outputId == self.systemOutputId() ? nil : outputId)
+            guard selection != self.applied else {
+                return
+            }
             let manager = AudioManager.shared
-            if let id = microId, let device = manager.inputDevices.first(where: { $0.deviceId == id }) {
-                manager.inputDevice = device
+            if selection.input != self.applied.input {
+                manager.inputDevice = selection.input.flatMap { id in manager.inputDevices.first(where: { $0.deviceId == id }) } ?? manager.defaultInputDevice
             }
-            if let id = outputId, let device = manager.outputDevices.first(where: { $0.deviceId == id }) {
-                manager.outputDevice = device
+            if selection.output != self.applied.output {
+                manager.outputDevice = selection.output.flatMap { id in manager.outputDevices.first(where: { $0.deviceId == id }) } ?? manager.defaultOutputDevice
             }
+            self.applied = selection
+            let line = "devices: input \(selection.input ?? "system default") → \(manager.inputDevice.name), output \(selection.output ?? "system default") → \(manager.outputDevice.name)"
+            _ = self.lastAppliedValue.swap(line)
+            relayLog(line)
         }
+    }
+
+    private static func systemInputId() -> String? {
+        return AVCaptureDevice.default(for: .audio)?.uniqueID
+    }
+
+    private static func systemOutputId() -> String? {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultOutputDevice, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var device = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        guard AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device) == noErr else {
+            return nil
+        }
+        address.mSelector = kAudioDevicePropertyDeviceUID
+        var uid: Unmanaged<CFString>?
+        size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        guard AudioObjectGetPropertyData(device, &address, 0, nil, &size, &uid) == noErr, let value = uid?.takeRetainedValue() else {
+            return nil
+        }
+        return value as String
     }
 }
 
