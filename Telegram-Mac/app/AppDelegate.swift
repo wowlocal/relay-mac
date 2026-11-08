@@ -357,6 +357,7 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
             self.containerUrl = containerUrl.path
             #if DEBUG
             RelayDebugSnapshot.install(directory: containerUrl.path)
+            RelayDebugCrashScan.install(directory: containerUrl.path)
             self.installRelayDebugRemote(directory: containerUrl.path)
             #endif
             setupLogger(containerPath: containerUrl.path)
@@ -1975,6 +1976,21 @@ extension AppDelegate {
             }
             shared.switchToAccount(id: AccountRecordId(rawValue: id), action: nil)
             completion(true, nil, [:])
+        })
+        RelayDebugRemote.register("screen-list", { _, completion in
+            let screens = DesktopCaptureSourceManagerMac(_s: ()).list()
+            let windows = DesktopCaptureSourceManagerMac(_w: ()).list()
+            completion(true, nil, ["screens": screens.map { $0.title() }, "windows": windows.count])
+        })
+        RelayDebugRemote.register("screen-picker", { [weak self] _, completion in
+            guard let shared = self?.relayDebugShared else {
+                completion(false, "no account", [:])
+                return
+            }
+            let window = presentDesktopCapturerWindow(mode: .screencast, select: { source, _ in
+                NSLog("relay debug picker selected \(source.title())")
+            }, devices: CallsCoreHooks.shared.devicesContext(shared), microIsOff: false)
+            completion(window != nil, nil, ["windows": relayDebugWindows()])
         })
         RelayDebugRemote.register("windows", { _, completion in
             completion(true, nil, ["windows": relayDebugWindows()])
