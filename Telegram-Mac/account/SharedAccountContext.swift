@@ -631,9 +631,9 @@ class SharedAccountContext {
     }
     
     #if !SHARE
-    private let crossCallSession: Atomic<PCallSession?> = Atomic<PCallSession?>(value: nil)
+    private let crossCallSession: Atomic<(any PresentationPeerCall)?> = Atomic<(any PresentationPeerCall)?>(value: nil)
     
-    func getCrossAccountCallSession() -> PCallSession? {
+    func getCrossAccountCallSession() -> (any PresentationPeerCall)? {
         return crossCallSession.with { $0 }
     }
     
@@ -739,7 +739,7 @@ class SharedAccountContext {
         return crossCallSession.with( { $0 }) != nil || crossGroupCall.with( { $0 }) != nil
     }
     
-    var p2pCall: PCallSession? {
+    var p2pCall: (any PresentationPeerCall)? {
         return crossCallSession.with( { $0 })
     }
 
@@ -757,7 +757,7 @@ class SharedAccountContext {
         return .single(true)
     }
     
-    func showCall(with session:PCallSession) {
+    func showCall(with session: any PresentationPeerCall) {
         appDelegate?.enumerateAccountContexts { accountContext in
             let callHeader = accountContext.bindings.rootNavigation().callHeader
             callHeader?.show(true, contextObject: session)

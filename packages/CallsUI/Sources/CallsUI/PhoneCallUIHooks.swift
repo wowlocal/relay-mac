@@ -20,7 +20,7 @@ public enum ConferenceCallJoinResult {
 
 public struct PhoneCallUIHooks {
     public let callScreenHost: (any SharedAccountContextProtocol) -> (any PhoneCallScreenHost)?
-    public let getCrossAccountCallSession: (any SharedAccountContextProtocol) -> PCallSession?
+    public let getCrossAccountCallSession: (any SharedAccountContextProtocol) -> (any PresentationPeerCall)?
     public let getCrossAccountGroupCall: (any SharedAccountContextProtocol) -> (any GroupCallContextProtocol)?
     public let selectModalPeers: (Window, any AccountContextProtocol, String, Set<PeerId>) -> Signal<[PeerId], NoError>
     public let makeCallFeedbackController: (any AccountContextProtocol, CallId, Int, Bool, Bool) -> ModalViewController
@@ -30,7 +30,7 @@ public struct PhoneCallUIHooks {
     public let applyGroupCallResult: (any SharedAccountContextProtocol, any GroupCallContextProtocol) -> Void
 
     public init(callScreenHost: @escaping (any SharedAccountContextProtocol) -> (any PhoneCallScreenHost)?,
-                getCrossAccountCallSession: @escaping (any SharedAccountContextProtocol) -> PCallSession?,
+                getCrossAccountCallSession: @escaping (any SharedAccountContextProtocol) -> (any PresentationPeerCall)?,
                 getCrossAccountGroupCall: @escaping (any SharedAccountContextProtocol) -> (any GroupCallContextProtocol)?,
                 selectModalPeers: @escaping (Window, any AccountContextProtocol, String, Set<PeerId>) -> Signal<[PeerId], NoError>,
                 makeCallFeedbackController: @escaping (any AccountContextProtocol, CallId, Int, Bool, Bool) -> ModalViewController,

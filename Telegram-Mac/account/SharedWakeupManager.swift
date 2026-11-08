@@ -2,6 +2,7 @@ import Cocoa
 import SwiftSignalKit
 import Postbox
 import TelegramCore
+import RelayTelegramCalls
 
 
 
@@ -124,7 +125,20 @@ class SharedWakeupManager {
         }
         let accountManager = sharedContext.accountManager
         for account in accounts {
-            if self.ringingStatesDisposables[account.id] == nil {
+            if self.ringingStatesDisposables[account.id] == nil, MattermostBackend.isEnabled {
+                self.ringingStatesDisposables[account.id] = relayIncomingRings(accountId: account.id).start(next: { [weak self] call in
+                    guard let self else {
+                        return
+                    }
+                    if self.sharedContext.hasActiveCall {
+                        if !relayIsCurrentCall(call.id, peerCall: self.sharedContext.p2pCall, groupCall: self.sharedContext.getCrossAccountGroupCall()?.call) {
+                            relayDeclineBusy(accountId: account.id, callId: call.id)
+                        }
+                    } else if let session = MainActor.assumeIsolated({ RelayPeerCallSession.incoming(sharedContext: self.sharedContext, account: account, call: call) }) {
+                        showCallWindow(session)
+                    }
+                })
+            } else if self.ringingStatesDisposables[account.id] == nil {
                 
                 let combine = combineLatest(MattermostBackend.isEnabled ? account.externalIsUpdating.get() : account.stateManager.isUpdating, account.callSessionManager.ringingStates()) |> mapToSignal { loading, states -> Signal<(Bool, CallSessionRingingState, PCallSession.InitialData)?, NoError> in
                     if let state = states.first {

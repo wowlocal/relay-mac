@@ -1,6 +1,7 @@
 import Cocoa
 import ApiCredentials
 import CrashRecoveryUI
+import RelayTelegramCalls
 
 @_silgen_name("OPENSSL_init_crypto")
 private func OPENSSL_init_crypto(_ opts: UInt64, _ settings: OpaquePointer?) -> Int32
@@ -71,6 +72,7 @@ installQuickSwitcherHooks()
 installDataUsageUIHooks()
 installStoriesUIHooks()
 installPhoneCallUIHooks()
+installRelayTelegramCalls()
 installBoostUIHooks()
 installMonetizationUIHooks()
 installGroupCallUIHooks()

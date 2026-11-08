@@ -919,6 +919,7 @@
 		AC94EED158812800A3210288 /* MattermostKit in Frameworks */ = {isa = PBXBuildFile; productRef = B12384F8A29E445DC1EAD93C /* MattermostKit */; };
 		B3DB985C7272C4EA26378082 /* MattermostSync in Frameworks */ = {isa = PBXBuildFile; productRef = B165513F97DFE88164D7BC3D /* MattermostSync */; };
 		252FFDBE90759088B825A8CD /* RelayUI in Frameworks */ = {isa = PBXBuildFile; productRef = 380C9913E6F5F85620287D33 /* RelayUI */; };
+		9590A2125777A445A77AA857 /* RelayTelegramCalls in Frameworks */ = {isa = PBXBuildFile; productRef = 7862C552E638044D33066FE6 /* RelayTelegramCalls */; };
 		53C2655B791449A18A453BBD /* GroupsInCommonUI in Frameworks */ = {isa = PBXBuildFile; productRef = 8C849FFE3CF443CEAAFD9A65 /* GroupsInCommonUI */; };
 		B2011E3EB7D84C48A0B9509D /* CrashRecoveryUI in Frameworks */ = {isa = PBXBuildFile; productRef = A49FDE6EE2CE45CC94854F90 /* CrashRecoveryUI */; };
 		E9E2F04E0D564351A4C88842 /* CrashReports in Frameworks */ = {isa = PBXBuildFile; productRef = 4E0F0513AE01455B9C8A6FD8 /* CrashReports */; };
@@ -1949,6 +1950,7 @@
 		4DC2739F7C119DEC4BB2E539 /* MattermostKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MattermostKit; path = "submodules/telegram-ios/submodules/MattermostKit"; sourceTree = "<group>"; };
 		82402551D4EDF3508F8E59D0 /* MattermostSync */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MattermostSync; path = "submodules/telegram-ios/submodules/MattermostSync"; sourceTree = "<group>"; };
 		A273275863628AB421D4A8D5 /* RelayUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RelayUI; path = packages/RelayUI; sourceTree = "<group>"; };
+		B677E45D7F868E79AB8A5554 /* RelayTelegramCalls */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RelayTelegramCalls; path = packages/RelayTelegramCalls; sourceTree = "<group>"; };
 		2382F66FCB03472CB031B1D7 /* GroupsInCommonUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = GroupsInCommonUI; path = packages/GroupsInCommonUI; sourceTree = "<group>"; };
 		2314496AC5714CD1BDBAF6C8 /* CrashRecoveryUI */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CrashRecoveryUI; path = packages/CrashRecoveryUI; sourceTree = "<group>"; };
 		DFD6737EF55F4DC5A158E555 /* CrashReports */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CrashReports; path = packages/CrashReports; sourceTree = "<group>"; };
@@ -2080,6 +2082,7 @@
 				AC94EED158812800A3210288 /* MattermostKit in Frameworks */,
 				B3DB985C7272C4EA26378082 /* MattermostSync in Frameworks */,
 				252FFDBE90759088B825A8CD /* RelayUI in Frameworks */,
+				9590A2125777A445A77AA857 /* RelayTelegramCalls in Frameworks */,
 				53C2655B791449A18A453BBD /* GroupsInCommonUI in Frameworks */,
 				B2011E3EB7D84C48A0B9509D /* CrashRecoveryUI in Frameworks */,
 				E9E2F04E0D564351A4C88842 /* CrashReports in Frameworks */,
@@ -2758,6 +2761,7 @@
 				4DC2739F7C119DEC4BB2E539 /* MattermostKit */,
 				82402551D4EDF3508F8E59D0 /* MattermostSync */,
 				A273275863628AB421D4A8D5 /* RelayUI */,
+				B677E45D7F868E79AB8A5554 /* RelayTelegramCalls */,
 				2382F66FCB03472CB031B1D7 /* GroupsInCommonUI */,
 				2314496AC5714CD1BDBAF6C8 /* CrashRecoveryUI */,
 				DFD6737EF55F4DC5A158E555 /* CrashReports */,
@@ -3703,6 +3707,7 @@
 				B12384F8A29E445DC1EAD93C /* MattermostKit */,
 				B165513F97DFE88164D7BC3D /* MattermostSync */,
 				380C9913E6F5F85620287D33 /* RelayUI */,
+				7862C552E638044D33066FE6 /* RelayTelegramCalls */,
 				8C849FFE3CF443CEAAFD9A65 /* GroupsInCommonUI */,
 				A49FDE6EE2CE45CC94854F90 /* CrashRecoveryUI */,
 				4E0F0513AE01455B9C8A6FD8 /* CrashReports */,
@@ -5917,6 +5922,10 @@
 		380C9913E6F5F85620287D33 /* RelayUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RelayUI;
+		};
+		7862C552E638044D33066FE6 /* RelayTelegramCalls */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RelayTelegramCalls;
 		};
 		8C849FFE3CF443CEAAFD9A65 /* GroupsInCommonUI */ = {
 			isa = XCSwiftPackageProductDependency;

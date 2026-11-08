@@ -14,9 +14,9 @@ import Localization
 import TelegramContext
 
 public enum PCallResult {
-    case success(PCallSession)
+    case success(any PresentationPeerCall)
     case fail
-    case samePeer(PCallSession)
+    case samePeer(any PresentationPeerCall)
 }
 
 public func phoneCall(context: any AccountContextProtocol, peerId:PeerId, ignoreSame:Bool = false, isVideo: Bool = false) -> Signal<PCallResult, NoError> {
@@ -75,7 +75,27 @@ public func phoneCall(account: Account, sharedContext: any SharedAccountContextP
                 return .complete()
             }
         }
-        if microAccess {
+        if microAccess, let relay = RelayCallHooks.shared {
+            return makeNewCallConfirmation(sharedContext: sharedContext, account: account, window: alertWindow, newPeerId: peerId, newCallType: .call, ignoreSame: ignoreSame) |> mapToSignal { value -> Signal<Bool, NoError> in
+                if ignoreSame {
+                    return .single(value)
+                } else {
+                    return sharedContext.endCurrentCall()
+                }
+            } |> mapToSignal { _ in
+                return relay.startPeerCall(sharedContext, account, peerId, isVideo)
+            }
+            |> deliverOnMainQueue
+            |> map { session -> PCallResult in
+                if let session {
+                    return .success(session)
+                }
+                if let alertWindow {
+                    alert(for: alertWindow, info: strings().callUndefinedError)
+                }
+                return .fail
+            }
+        } else if microAccess {
             return makeNewCallConfirmation(sharedContext: sharedContext, account: account, window: alertWindow, newPeerId: peerId, newCallType: .call, ignoreSame: ignoreSame) |> mapToSignal { value -> Signal<Bool, NoError> in
                 if ignoreSame {
                     return .single(value)
@@ -133,7 +153,7 @@ public func makeNewCallConfirmation(sharedContext: any SharedAccountContextProto
             currentAccount = groupCall.call.account
             currentCallType = .voiceChat
         } else {
-            fatalError("wtf")
+            return .single(true)
         }
         if ignoreSame, newPeerId == currentPeerId {
             return .single(true)

@@ -7,7 +7,6 @@ import SwiftSignalKit
 import CodeSyntax
 import CallsUI
 import ChatUI
-import RelayUI
 import ImageCanvasUI
 import AvatarEditorUI
 
@@ -333,10 +332,6 @@ private func makeChatNavigationHooks() -> ChatNavigationHooks {
         return roundToStandardQuality(size: size)
     }
     hooks.startPhoneCall = { context, peerId, isVideo in
-        if MattermostBackend.isEnabled {
-            openRelayCall(context: context, peerId: peerId)
-            return EmptyDisposable
-        }
         return (phoneCall(context: context, peerId: peerId, isVideo: isVideo) |> deliverOnMainQueue).start(next: { result in
             applyUIPCallResult(context, result)
         })

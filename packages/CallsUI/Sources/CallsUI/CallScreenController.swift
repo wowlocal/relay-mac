@@ -40,6 +40,13 @@ private func insertSpacesBetweenEmojis(in text: String) -> String {
 
 
 
+private func callKeyEmoji(_ keyVisualHash: Data) -> String {
+    if keyVisualHash.isEmpty {
+        return ""
+    }
+    return insertSpacesBetweenEmojis(in: ObjcUtils.callEmojies(keyVisualHash))
+}
+
 private func mapCallState(_ state: CallState, canBeRemoved: Bool, supportsConference: Bool) -> ExternalPeerCallState {
     
     
@@ -54,9 +61,9 @@ private func mapCallState(_ state: CallState, canBeRemoved: Bool, supportsConfer
     case .connecting:
         externalState = .connecting
     case .active(let startTime, let reception, let data):
-        externalState = .active(startTime: startTime, reception: reception, emoji: insertSpacesBetweenEmojis(in: ObjcUtils.callEmojies(data)))
+        externalState = .active(startTime: startTime, reception: reception, emoji: callKeyEmoji(data))
     case .reconnecting(let startTime, let reception, let data):
-        externalState = .reconnecting(startTime: startTime, reception: reception, emoji: insertSpacesBetweenEmojis(in: ObjcUtils.callEmojies(data)))
+        externalState = .reconnecting(startTime: startTime, reception: reception, emoji: callKeyEmoji(data))
     case let .terminating(callSessionTerminationReason):
         let reason: PeerCallSessionTerminationReason?
         if let callSessionTerminationReason {
@@ -178,6 +185,7 @@ public func callScreen(_ result:PCallResult, source: CallWindowSource? = nil) {
         let ownContext:()->(any AccountContextProtocol)? = { [weak session] in
             return session?.accountContext
         }
+        let supportsConference = session is PCallSession
         
         var getScreen:(()->Window?)? = nil
         
@@ -265,28 +273,19 @@ public func callScreen(_ result:PCallResult, source: CallWindowSource? = nil) {
         }, acceptcall: { [weak session] in
             session?.acceptCallSession()
         }, video: { [weak session] isIncoming in
-            return session?.makeVideo(isIncoming: isIncoming).map { MetalVideoMakeSource(videoStreamSignal: $0) }
+            return session?.makeVideoSource(isIncoming: isIncoming)
         }, nativeVideo: { [weak session] isIncoming, completion in
-            guard let session, isNativeCallVideoRenderingAvailable else {
+            guard let session else {
                 completion(nil)
                 return
             }
-            let deliver: (OngoingCallContextPresentationCallVideoView?) -> Void = { video in
-                Queue.mainQueue().async {
-                    completion(video.flatMap { NativeCallVideoView(video: $0) })
-                }
-            }
-            if isIncoming {
-                session.makeIncomingVideoView(completion: deliver)
-            } else {
-                session.makeOutgoingVideoView(completion: deliver)
-            }
+            session.makeFallbackVideoView(isIncoming: isIncoming, completion: completion)
         }, audioLevel: { [weak session] in
             return session?.audioLevel ?? .single(0)
         }, openSettings: { window in
             showModal(with: CallSettingsModalController(sharedContext, presentation: TelegramThemeHooks.shared.darkAppearance()), for: window)
         }, upgradeToConference: { [weak session] window in
-            if let session, let context = ownContext() {
+            if let session = session as? PCallSession, let context = ownContext() {
                 let peerIds = [session.peerId]
                 _ = PhoneCallUIHooks.shared.selectModalPeers(window, context, strings().voiceChatInviteChannelsTitle, Set(peerIds)).start(next: { [weak session, weak window] peerIds in
                     if let session, let window {
@@ -315,7 +314,7 @@ public func callScreen(_ result:PCallResult, source: CallWindowSource? = nil) {
         screen.contextObject = session
         
         screen.setState(combineLatest(session.state, session.canBeRemoved) |> deliverOnMainQueue |> map { state, canBeRemoved in
-            return mapCallState(state, canBeRemoved: canBeRemoved, supportsConference: ownContext() != nil)
+            return mapCallState(state, canBeRemoved: canBeRemoved, supportsConference: supportsConference && ownContext() != nil)
         })
         
         screen.onCompletion = {
@@ -327,7 +326,9 @@ public func callScreen(_ result:PCallResult, source: CallWindowSource? = nil) {
             return screen?.window
         }
         
-        observeCallTermination(session)
+        if let session = session as? PCallSession {
+            observeCallTermination(session)
+        }
         
     default:
         break
@@ -388,7 +389,7 @@ func callErrorText(_ error: CallSessionError, peer: Peer) -> String? {
     }
 }
 
-public func showCallWindow(_ session: PCallSession) {
+public func showCallWindow(_ session: any PresentationPeerCall) {
     callScreen(.success(session))
 }
 

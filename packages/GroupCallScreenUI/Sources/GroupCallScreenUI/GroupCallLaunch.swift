@@ -49,6 +49,8 @@ public func getGroupCallPanelData(context: any AccountContextProtocol, peerId: P
                                                     return GroupCallPanelData(peerId: peerId, isChannel: isChannel, info: nil, topParticipants: [], participantCount: 0, activeSpeakers: [], groupCall: context)
                                                 }
                                             }
+                                    } else if let relay = RelayCallHooks.shared {
+                                        return relay.groupCallPanelData(context, peerId, activeCall)
                                     } else {
                                         return Signal { subscriber in
                                             let disposable = MetaDisposable()
@@ -78,7 +80,26 @@ public func requestOrJoinGroupCall(context: any AccountContextProtocol, peerId: 
     let accounts = context.sharedContext.activeAccounts |> take(1)
     let account = context.account
 
-    if let peerId {
+    if let peerId, let relay = RelayCallHooks.shared {
+        return combineLatest(queue: .mainQueue(), accounts, account.postbox.loadedPeerWithId(peerId)) |> mapToSignal { accounts, peer in
+            if let context = GroupCallScreenUIHooks.shared.getCrossAccountGroupCall(context.sharedContext), context.call.peerId == peerId, context.call.account.id == account.id {
+                return .single(.samePeer(context))
+            } else {
+                return makeNewCallConfirmation(accountContext: context, newPeerId: peerId, newCallType: .voiceChat)
+                |> mapToSignal { _ in
+                    return sharedContext.endCurrentCall()
+                } |> mapToSignal { _ in
+                    let call = initialCall ?? initialInfo.map { CachedChannelData.ActiveCall(id: $0.id, accessHash: $0.accessHash, title: nil, scheduleTimestamp: nil, subscribedToScheduled: false, isStream: false) }
+                    return relay.startGroupCall(context, peerId, call)
+                } |> deliverOnMainQueue |> map { call -> RequestOrJoinGroupCallResult in
+                    guard let call else {
+                        return .fail
+                    }
+                    return .success(GroupCallContext(call: call, peerMemberContextsManager: context.peerChannelMemberCategoriesContextsManager, window: makeGroupWindow(isStream: false)))
+                }
+            }
+        }
+    } else if let peerId {
         return combineLatest(queue: .mainQueue(), accounts, account.postbox.loadedPeerWithId(peerId)) |> mapToSignal { accounts, peer in
             if let context = GroupCallScreenUIHooks.shared.getCrossAccountGroupCall(context.sharedContext), context.call.peerId == peerId, context.call.account.id == account.id {
                 return .single(.samePeer(context))
@@ -170,6 +191,17 @@ private func startGroupCall(context: any AccountContextProtocol, peerId: PeerId?
 }
 
 public func createVoiceChat(context: any AccountContextProtocol, peerId: PeerId, displayAsList: [FoundPeer]? = nil, canBeScheduled: Bool = false) {
+    if RelayCallHooks.shared != nil {
+        _ = (requestOrJoinGroupCall(context: context, peerId: peerId, joinAs: context.peerId, initialCall: nil, reference: nil) |> deliverOnMainQueue).start(next: { result in
+            switch result {
+            case let .success(callContext), let .samePeer(callContext):
+                applyGroupCallResult(context.sharedContext, callContext)
+            case .fail:
+                alert(for: context.window, info: strings().errorAnError)
+            }
+        })
+        return
+    }
     let confirmation = combineLatest(queue: .mainQueue(), makeNewCallConfirmation(accountContext: context, newPeerId: peerId, newCallType: .voiceChat), context.account.postbox.loadedPeerWithId(peerId)) |> mapToSignalPromotingError { _, peer in
         return Signal<(GroupCallInfo?, PeerId), CreateGroupCallError> { subscriber in
 

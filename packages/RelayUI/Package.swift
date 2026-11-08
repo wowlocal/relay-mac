@@ -17,7 +17,6 @@ let package = Package(
         .library(name: "RelayUI", targets: ["RelayUI"]),
     ],
     dependencies: [
-        .package(name: "RelayCalls", path: "../../submodules/telegram-ios/submodules/RelayCalls"),
         .package(name: "SSignalKit", path: "../../submodules/telegram-ios/submodules/SSignalKit"),
         .package(name: "TelegramCore", path: "../../submodules/telegram-ios/submodules/TelegramCore"),
         .package(name: "Postbox", path: "../../submodules/telegram-ios/submodules/Postbox"),
@@ -29,8 +28,6 @@ let package = Package(
         .target(
             name: "RelayUI",
             dependencies: [
-                .product(name: "RelayCalls", package: "RelayCalls"),
-                .product(name: "RelayCallsCore", package: "RelayCalls"),
                 .product(name: "SwiftSignalKit", package: "SSignalKit", condition: nil),
                 .product(name: "TelegramCore", package: "TelegramCore", condition: nil),
                 .product(name: "Postbox", package: "Postbox", condition: nil),

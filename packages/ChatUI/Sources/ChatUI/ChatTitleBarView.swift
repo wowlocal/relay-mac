@@ -546,7 +546,7 @@ class ChatTitleBarView: TitledBarView, InteractionContentViewProtocol {
                     if peer.isGroup || peer.isSupergroup || peer.isChannel {
                         if let groupCall = presentation.groupCall {
                             if let data = groupCall.data, data.participantCount == 0 && groupCall.activeCall.scheduleTimestamp == nil {
-                                callButton.isHidden = presentation.reportMode != nil || !MattermostFeatures.calls
+                                callButton.isHidden = presentation.reportMode != nil || !(MattermostFeatures.calls || MattermostFeatures.relayCalls)
                             } else {
                                 callButton.isHidden = true
                             }
@@ -554,7 +554,7 @@ class ChatTitleBarView: TitledBarView, InteractionContentViewProtocol {
                             callButton.isHidden = true
                         }
                     } else {
-                        callButton.isHidden = !peer.canCall || chatInteraction.peerId == chatInteraction.interactionContext.peerId || presentation.reportMode != nil || chatInteraction.isMonoforum || !MattermostFeatures.calls
+                        callButton.isHidden = !peer.canCall || chatInteraction.peerId == chatInteraction.interactionContext.peerId || presentation.reportMode != nil || chatInteraction.isMonoforum || !(MattermostFeatures.calls || MattermostFeatures.relayCalls)
                     }
                     
                     
@@ -564,10 +564,6 @@ class ChatTitleBarView: TitledBarView, InteractionContentViewProtocol {
                 
             default:
                 callButton.isHidden = true
-            }
-
-            if MattermostBackend.isEnabled, case .history = chatInteraction.mode {
-                callButton.isHidden = chatInteraction.peerId == chatInteraction.interactionContext.peerId || presentation.reportMode != nil
             }
 
             

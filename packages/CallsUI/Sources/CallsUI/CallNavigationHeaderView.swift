@@ -354,9 +354,9 @@ open class CallHeaderBasicView : NavigationHeaderView {
 
 public class CallNavigationHeaderView: CallHeaderBasicView {
     
-    public var session: PCallSession? {
+    public var session: (any PresentationPeerCall)? {
         get {
-            self.header?.contextObject as? PCallSession
+            self.header?.contextObject as? any PresentationPeerCall
         }
     }
     private let audioLevelDisposable = MetaDisposable()
@@ -383,7 +383,9 @@ public class CallNavigationHeaderView: CallHeaderBasicView {
     
     public override func update(with contextObject: Any) {
         super.update(with: contextObject)
-        let session = contextObject as! PCallSession
+        guard let session = contextObject as? any PresentationPeerCall else {
+            return
+        }
         let account = session.account
         backgroundView.isFlat = session.sharedContext.isLite(.blur)
         let signal = Signal<Peer?, NoError>.single(session.peer) |> then(session.account.postbox.loadedPeerWithId(session.peerId) |> map(Optional.init) |> deliverOnMainQueue)

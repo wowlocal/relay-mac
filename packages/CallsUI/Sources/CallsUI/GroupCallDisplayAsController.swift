@@ -13,6 +13,7 @@ import TelegramTheme
 import TelegramUtils
 import ColorPalette
 import TelegramIconsTheme
+import TelegramCallsCore
 
 
 
@@ -379,6 +380,10 @@ public func GroupCallDisplayAsController(context: any AccountContextProtocol, mo
 
 
 public func selectGroupCallJoiner(context: any AccountContextProtocol, peerId: PeerId, completion: @escaping(PeerId, Date?, Bool)->Void, canBeScheduled: Bool = false) {
+    if RelayCallHooks.shared != nil {
+        completion(context.peerId, nil, false)
+        return
+    }
     let combined = combineLatest(queue: .mainQueue(), context.engine.calls.cachedGroupCallDisplayAsAvailablePeers(peerId: peerId), context.account.postbox.loadedPeerWithId(peerId))
     _ = showModalProgress(signal: combined, for: context.window).start(next: { displayAsList, peer in
         if displayAsList.count > 1 || canBeScheduled {

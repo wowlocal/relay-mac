@@ -339,7 +339,7 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
 
     private var launchAction: ApplicationContextLaunchAction?
     
-    init(window: Window, context: AccountContext, launchSettings: LaunchSettings, callSession: PCallSession?, groupCallContext: GroupCallContext?, inlinePlayerContext: InlineAudioPlayerView.ContextObject?, folders: ChatListFolders?) {
+    init(window: Window, context: AccountContext, launchSettings: LaunchSettings, callSession: (any PresentationPeerCall)?, groupCallContext: GroupCallContext?, inlinePlayerContext: InlineAudioPlayerView.ContextObject?, folders: ChatListFolders?) {
         
         self.context = context
         emptyController = EmptyChatViewController(context)
@@ -380,7 +380,7 @@ final class AuthorizedApplicationContext: NSObject, SplitViewDelegate {
                 } else {
                     newView = GroupCallNavigationHeaderView(header)
                 }
-            } else if contextObject is PCallSession {
+            } else if contextObject is any PresentationPeerCall {
                 if let view = view, view.className == CallNavigationHeaderView.className() {
                     newView = view
                 } else {

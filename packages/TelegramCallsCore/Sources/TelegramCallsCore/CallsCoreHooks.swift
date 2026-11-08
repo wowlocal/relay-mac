@@ -11,9 +11,9 @@ import SystemPermissions
 import ProxyUtils
 
 public struct CallsCoreHooks {
-    public let presentUpgradedConferenceCall: (any SharedAccountContextProtocol, PresentationGroupCallImpl, any AccountContextProtocol, Window) -> Void
+    public let presentUpgradedConferenceCall: (any SharedAccountContextProtocol, any PresentationGroupCall, any AccountContextProtocol, Window) -> Void
     public let presentScreenCapturePicker: (DevicesContext, Bool, @escaping (VideoSourceMac, Bool) -> Void) -> NSWindow?
-    public let showCall: (PCallSession) -> Void
+    public let showCall: (any PresentationPeerCall) -> Void
     public let accountContext: (AccountRecordId) -> (any AccountContextProtocol)?
     public let activeWindow: () -> Window?
     public let cachedGroupCallContexts: (any AccountContextProtocol) -> AccountGroupCallContextCacheImpl
@@ -21,9 +21,9 @@ public struct CallsCoreHooks {
     public let alert: (Window, String) -> Void
     public let verifyAlert: (Window, String, String, String, String?, @escaping (Bool) -> Void) -> Void
 
-    public init(presentUpgradedConferenceCall: @escaping (any SharedAccountContextProtocol, PresentationGroupCallImpl, any AccountContextProtocol, Window) -> Void,
+    public init(presentUpgradedConferenceCall: @escaping (any SharedAccountContextProtocol, any PresentationGroupCall, any AccountContextProtocol, Window) -> Void,
                 presentScreenCapturePicker: @escaping (DevicesContext, Bool, @escaping (VideoSourceMac, Bool) -> Void) -> NSWindow?,
-                showCall: @escaping (PCallSession) -> Void,
+                showCall: @escaping (any PresentationPeerCall) -> Void,
                 accountContext: @escaping (AccountRecordId) -> (any AccountContextProtocol)?,
                 activeWindow: @escaping () -> Window?,
                 cachedGroupCallContexts: @escaping (any AccountContextProtocol) -> AccountGroupCallContextCacheImpl,

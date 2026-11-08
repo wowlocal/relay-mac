@@ -312,10 +312,8 @@ public struct PeerCallState : Equatable {
     
     var secretKey: String? {
         switch self.externalState.state {
-        case .active(_, _, let emoji):
-            return emoji
-        case .reconnecting(_, _, let emoji):
-            return emoji
+        case .active(_, _, let emoji), .reconnecting(_, _, let emoji):
+            return emoji.isEmpty ? nil : emoji
         default:
             return nil
         }
