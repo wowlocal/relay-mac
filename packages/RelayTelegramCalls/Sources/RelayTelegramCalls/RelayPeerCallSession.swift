@@ -165,7 +165,7 @@ public final class RelayPeerCallSession: PresentationPeerCall {
                     core.accept()
                 } else {
                     if let window {
-                        CallsCoreHooks.shared.verifyAlert(window, strings().requestAccesErrorHaveNotAccessCall, strings().modalOK, "", strings().requestAccesErrorConirmSettings, { optionSelected in
+                        CallsCoreHooks.shared.verifyAlert(window, strings().requestAccesErrorHaveNotAccessCall.replacingOccurrences(of: "Telegram", with: "Relay"), strings().modalOK, "", strings().requestAccesErrorConirmSettings, { optionSelected in
                             if optionSelected {
                                 openSystemSettings(.microphone)
                             }

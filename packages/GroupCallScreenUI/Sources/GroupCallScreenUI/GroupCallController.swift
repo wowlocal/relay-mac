@@ -2159,7 +2159,7 @@ public final class GroupCallUIController : ViewController {
             guard let window = self?.window else {
                 return
             }
-            verifyAlert_button(for: window, information: strings().voiceChatRequestAccess, ok: strings().modalOK, cancel: "", option: strings().requestAccesErrorConirmSettings, successHandler: { result in
+            verifyAlert_button(for: window, information: strings().voiceChatRequestAccess.replacingOccurrences(of: "Telegram", with: appName), ok: strings().modalOK, cancel: "", option: strings().requestAccesErrorConirmSettings, successHandler: { result in
                 switch result {
                 case .thrid:
                     openSystemSettings(.microphone)

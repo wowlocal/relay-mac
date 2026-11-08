@@ -216,7 +216,7 @@ public func callScreen(_ result:PCallResult, source: CallWindowSource? = nil) {
                         session?.disableVideo()
                     }
                 } else {
-                    verifyAlert_button(for: screen, information: strings().callCameraError, ok: strings().modalOK, cancel: "", option: strings().requestAccesErrorConirmSettings, successHandler: { result in
+                    verifyAlert_button(for: screen, information: strings().callCameraError.replacingOccurrences(of: "Telegram", with: appName), ok: strings().modalOK, cancel: "", option: strings().requestAccesErrorConirmSettings, successHandler: { result in
                         switch result {
                         case .thrid:
                             openSystemSettings(.camera)
@@ -239,7 +239,7 @@ public func callScreen(_ result:PCallResult, source: CallWindowSource? = nil) {
             if let result = result {
                 switch result {
                 case .permission:
-                    verifyAlert_button(for: screen, information: strings().callScreenError, ok: strings().modalOK, cancel: "", option: strings().requestAccesErrorConirmSettings, successHandler: { result in
+                    verifyAlert_button(for: screen, information: strings().callScreenError.replacingOccurrences(of: "Telegram", with: appName), ok: strings().modalOK, cancel: "", option: strings().requestAccesErrorConirmSettings, successHandler: { result in
                         switch result {
                         case .thrid:
                             openSystemSettings(.sharing)

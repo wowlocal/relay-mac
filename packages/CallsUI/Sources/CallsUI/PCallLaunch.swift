@@ -116,7 +116,7 @@ public func phoneCall(account: Account, sharedContext: any SharedAccountContextP
             }
         } else {
             if let alertWindow {
-                verifyAlert_button(for: alertWindow, information: strings().requestAccesErrorHaveNotAccessCall, ok: strings().modalOK, cancel: "", option: strings().requestAccesErrorConirmSettings, successHandler: { result in
+                verifyAlert_button(for: alertWindow, information: strings().requestAccesErrorHaveNotAccessCall.replacingOccurrences(of: "Telegram", with: appName), ok: strings().modalOK, cancel: "", option: strings().requestAccesErrorConirmSettings, successHandler: { result in
                     switch result {
                     case .thrid:
                         openSystemSettings(.microphone)
