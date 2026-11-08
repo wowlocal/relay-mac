@@ -4049,6 +4049,9 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
                 }
             }
             
+            if let subject = subject, self.openMattermostThread(replyingTo: message, subject: subject) {
+                return
+            }
             
             self.chatInteraction.focusInputField()
             let signal:Signal<Message?, NoError> = subject == nil ? .single(nil) : self.chatInteraction.interactionContext.account.postbox.messageAtId(subject!.messageId)
@@ -10133,6 +10136,18 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
         DispatchQueue.main.async { [weak self] in
             self?.removeCaptureExclusion()
         }
+    }
+
+    private func openMattermostThread(replyingTo message: Message?, subject: EngineMessageReplySubject) -> Bool {
+        guard case let .peer(peerId) = self.chatLocation, case .history = self.mode, subject.messageId.peerId == peerId, subject.messageId.namespace == Namespaces.Message.Cloud, MattermostBackend.mainHistoryTag(accountPeerId: self.context.peerId, peerId: peerId) != nil else {
+            return false
+        }
+        var rootId = subject.messageId
+        if let message, message.id == subject.messageId, let reply = message.attributes.first(where: { $0 is ReplyMessageAttribute }) as? ReplyMessageAttribute, reply.messageId.peerId == peerId, reply.messageId.namespace == Namespaces.Message.Cloud {
+            rootId = reply.threadMessageId ?? reply.messageId
+        }
+        self.chatInteraction.openReplyThread(rootId, false, false, .replies(origin: subject.messageId))
+        return true
     }
 
     private func updateCaptureExclusion(_ isProtected: Bool) {
