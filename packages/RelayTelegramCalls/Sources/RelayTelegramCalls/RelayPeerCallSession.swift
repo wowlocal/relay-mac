@@ -396,7 +396,7 @@ final class RelayPeerCallCore {
             case .connecting:
                 self.wasAnswered = true
                 state = .connecting(nil)
-                tone = self.isOutgoing ? .ringback : nil
+                tone = self.isOutgoing ? .ringback : .connecting
             case let .active(since):
                 self.wasAnswered = true
                 state = .active(since.timeIntervalSinceReferenceDate, reception, Data())
