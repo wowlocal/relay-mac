@@ -106,6 +106,17 @@ with open(sys.argv[1], "w") as f:
 PY
 cat "$NOTES_FILE"
 
+if [ "${RELAY_PRERELEASE:-}" = 1 ]; then
+    TAG="relay-mac-$VERSION-$BUILD"
+    git tag "$TAG" && git push -q origin "$TAG" || fail "tag $TAG not pushed"
+    echo "== github pre-release (no appcast, no bucket upload)"
+    RELAY_PRERELEASE=1 RELAY_UPDATES_DIR="$UPDATES_DIR" bash tools/relay-mac-github-release.sh build/Relay.app | tail -1 | grep -q "exit=0" \
+        || fail "GitHub release (build/relay-mac-github-release.log)"
+    grep "^released:" build/relay-mac-github-release.log
+    echo "exit=0"
+    exit 0
+fi
+
 echo "== appcast"
 if [ -f "$ENV_FILE" ]; then
     set -a
