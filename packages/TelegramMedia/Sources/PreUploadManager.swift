@@ -13,9 +13,13 @@ public class PreUploadManager {
         self.path = path
         self.id = id
         
-        engine.resources.preUpload(id: id, encrypt: false, tag: nil, source: resource.get() |> map { EngineMediaResource.ResourceData($0) }, onComplete: {
-            unlink(path)
-        })
+        // MATTERMOST: no MTProto upload while recording (it would only be parked); the finished voice or video
+        // message is the message's own upload (MattermostSync's PostSender, 5A, 5B).
+        if !MattermostBackend.isEnabled {
+            engine.resources.preUpload(id: id, encrypt: false, tag: nil, source: resource.get() |> map { EngineMediaResource.ResourceData($0) }, onComplete: {
+                unlink(path)
+            })
+        }
     }
     
     

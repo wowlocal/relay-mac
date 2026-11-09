@@ -155,6 +155,7 @@ public class ChatInputRecordingView: View {
 
         overlayView.updateState(state)
         singleTimeControl.layer?.opacity = 0
+        singleTimeControl.isHidden = MattermostBackend.isEnabled
 
         recView.layer?.cornerRadius = recView.frame.width / 2
 
@@ -218,10 +219,12 @@ public class ChatInputRecordingView: View {
         if state != .fixed {
             return [(lockControl, lockHeight - (lockHeight - controlSize) * lockness)]
         }
+        // MATTERMOST: no view-once voice or video messages (a Mattermost post can't expire after one play; 5A, 5B).
+        let singleTime: [(view: NSView, height: CGFloat)] = MattermostBackend.isEnabled ? [] : [(singleTimeControl, controlSize)]
         if recorder.canPause {
-            return [(pauseControl, controlSize), (singleTimeControl, controlSize)]
+            return [(pauseControl, controlSize)] + singleTime
         }
-        return [(singleTimeControl, controlSize)]
+        return singleTime
     }
 
     private func layoutFloatingControls(transition: ContainedViewLayoutTransition) {
@@ -575,7 +578,7 @@ public class ChatInputRecordingView: View {
             if self.isMouseOverChatNavigation {
                 return .invokeNext
             }
-            if self.singleTimeControl.mouseInside() || self.pauseControl.mouseInside() {
+            if (!self.singleTimeControl.isHidden && self.singleTimeControl.mouseInside()) || self.pauseControl.mouseInside() {
                 return .invokeNext
             }
             if self.isPaused, self.deleteButton.mouseInside() || self.scrubber.mouseInside() {
