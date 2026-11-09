@@ -1521,9 +1521,24 @@ public class ChatRowItem: TableRowItem {
         }
     }
     
+    // MATTERMOST: under collapsed reply threads a root post's replies are a comments button in its chat's history, as
+    // on iOS (`hasCommentButton`); MattermostSync marks such a root with the chat itself as `commentsPeerId`.
+    public var mattermostRepliesAttribute: ReplyThreadMessageAttribute? {
+        guard MattermostBackend.isEnabled, chatInteraction.mode == .history, case .peer = chatInteraction.chatLocation, let message = effectiveCommentMessage else {
+            return nil
+        }
+        guard let attribute = message.attributes.first(where: { $0 is ReplyThreadMessageAttribute }) as? ReplyThreadMessageAttribute, attribute.count > 0, attribute.commentsPeerId == message.id.peerId else {
+            return nil
+        }
+        return attribute
+    }
+
     public var channelHasCommentButton: Bool {
         if chatInteraction.mode == .scheduled || chatInteraction.isLogInteraction {
             return false
+        }
+        if MattermostBackend.isEnabled {
+            return mattermostRepliesAttribute != nil
         }
         if let message = effectiveCommentMessage, let peer = message.peers[message.id.peerId] as? TelegramChannel {
             switch peer.info {
@@ -1575,6 +1590,15 @@ public class ChatRowItem: TableRowItem {
         if !isStateOverlayLayout || hasBubble || !channelHasCommentButton {
             return nil
         }
+        // MATTERMOST: the replies of a root post (`mattermostRepliesAttribute`).
+        if let message = effectiveCommentMessage, let attribute = mattermostRepliesAttribute {
+            let textColor = isBubbled && presentation.backgroundMode.hasWallpaper ? presentation.chatServiceItemTextColor : presentation.colors.accent
+            let texts: [ChannelCommentsRenderData.Text] = [.init(text: .initialize(string: "\(Int(attribute.count).prettyRounded)", color: textColor, font: .normal(.short)), animation: .numeric, index: 0)]
+            _commentsBubbleDataOverlay = ChannelCommentsRenderData(context: chatInteraction.interactionContext, message: message, hasUnread: mattermostHasUnreadReplies(attribute), title: texts, peers: [], drawBorder: true, isLoading: false, bubbleMode: renderType == .bubble, handler: { [weak self] in
+                self?.chatInteraction.openReplyThread(message.id, false, false, .replies(origin: message.id))
+            })
+            return _commentsBubbleDataOverlay
+        }
         if let message = effectiveCommentMessage, let peer = message.peers[message.id.peerId] as? TelegramChannel {
             switch peer.info {
             case let .broadcast(info):
@@ -1623,6 +1647,20 @@ public class ChatRowItem: TableRowItem {
             return nil
         }
         
+        // MATTERMOST: the replies of a root post (`mattermostRepliesAttribute`) as "N Replies" under the post; a post
+        // without a bubble in bubble mode (sticker, video message, big emoji) has them in `commentsBubbleDataOverlay`.
+        if let message = effectiveCommentMessage, let attribute = mattermostRepliesAttribute {
+            if isStateOverlayLayout {
+                if let media = message.anyMedia, !media.isInteractiveMedia {
+                    return nil
+                }
+                if self is ChatVideoMessageItem || (self as? ChatMessageItem)?.containsBigEmoji == true {
+                    return nil
+                }
+            }
+            _commentsBubbleData = mattermostRepliesBubbleData(message, attribute)
+            return _commentsBubbleData
+        }
         if isStateOverlayLayout, let media = effectiveCommentMessage?.anyMedia, !media.isInteractiveMedia {
             return nil
         } else if (self is ChatVideoMessageItem) {
@@ -1696,6 +1734,37 @@ public class ChatRowItem: TableRowItem {
             }
         }
         return _commentsBubbleData
+    }
+    
+    private func mattermostHasUnreadReplies(_ attribute: ReplyThreadMessageAttribute) -> Bool {
+        if let maxMessageId = attribute.maxMessageId, let maxReadMessageId = attribute.maxReadMessageId {
+            return maxReadMessageId < maxMessageId
+        }
+        return false
+    }
+
+    private func mattermostRepliesBubbleData(_ message: Message, _ attribute: ReplyThreadMessageAttribute) -> ChannelCommentsRenderData {
+        let count = Int(attribute.count)
+        let pretty = count.formattedWithSeparator
+        let text = strings().chatTitleRepliesOther(count).replacingOccurrences(of: "\(count)", with: pretty)
+        var title: [(String, ChannelCommentsRenderData.Text.Animation, Int)] = []
+        let range = text.nsstring.range(of: pretty)
+        if range.location != NSNotFound {
+            title.append((text.nsstring.substring(to: range.location), .crossFade, 0))
+            for index in 0 ..< range.length {
+                title.append((text.nsstring.substring(with: NSMakeRange(range.location + index, 1)), .numeric, index + 1))
+            }
+            title.append((text.nsstring.substring(from: range.upperBound), .crossFade, range.length + 1))
+        } else {
+            title.append((text, .crossFade, 0))
+        }
+        let texts: [ChannelCommentsRenderData.Text] = title.filter { !$0.0.isEmpty }.map {
+            return ChannelCommentsRenderData.Text(text: .initialize(string: $0.0, color: presentation.colors.accentIcon, font: .normal(.title)), animation: $0.1, index: $0.2)
+        }
+        let latestPeers = attribute.latestUsers.compactMap { message.peers[$0] }
+        return ChannelCommentsRenderData(context: chatInteraction.interactionContext, message: message, hasUnread: mattermostHasUnreadReplies(attribute), title: texts, peers: latestPeers, drawBorder: !isBubbleFullFilled || !captionLayouts.isEmpty, isLoading: false, bubbleMode: renderType == .bubble, handler: { [weak self] in
+            self?.chatInteraction.openReplyThread(message.id, false, false, .replies(origin: message.id))
+        })
     }
     
     
@@ -2586,7 +2655,8 @@ public class ChatRowItem: TableRowItem {
             if let message = effectiveCommentMessage {
                 for attribute in message.attributes {
                     if let attribute = attribute as? ReplyThreadMessageAttribute, attribute.count > 0 {
-                        if let peer = chatInteraction.peer, peer.isSupergroup, !chatInteraction.mode.isThreadMode {
+                        // MATTERMOST: not next to the time when the replies show as a button (`mattermostRepliesAttribute`).
+                        if let peer = chatInteraction.peer, peer.isSupergroup, !chatInteraction.mode.isThreadMode, !(MattermostBackend.isEnabled && attribute.commentsPeerId == message.id.peerId) {
                             let attr: NSAttributedString = .initialize(string: Int(attribute.count).prettyNumber, color: isStateOverlayLayout ? stateOverlayTextColor : !hasBubble ? theme.colors.grayText : theme.chat.grayText(isIncoming, object.renderType == .bubble), font: renderType == .bubble ? .normal(.small) : .normal(.short))
                             self.replyCount = TextViewLayout(attr, maximumNumberOfLines: 1)
                         }

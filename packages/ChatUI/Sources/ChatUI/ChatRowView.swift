@@ -632,7 +632,9 @@ public class ChatRowView: TableRowView, Notifable, MultipleSelectable, RevealTab
             }
         }
         if let commentsView = self.channelCommentsBubbleSmallControl, let item = item as? ChatRowItem {
-            commentsView.change(opacity: mouseInsideRow() && contextMenu == nil && item.chatInteraction.presentation.state != .selecting ? 1.0 : 0.0, animated: animated)
+            // MATTERMOST: a root's replies stay visible, as on iOS; they are its only reply count.
+            let visible = MattermostBackend.isEnabled ? item.chatInteraction.presentation.state != .selecting : mouseInsideRow() && contextMenu == nil && item.chatInteraction.presentation.state != .selecting
+            commentsView.change(opacity: visible ? 1.0 : 0.0, animated: animated)
         }
     }
     
@@ -1612,7 +1614,17 @@ public class ChatRowView: TableRowView, Notifable, MultipleSelectable, RevealTab
         if !item.isBubbled, let _ = forwardLine {
             x += 10
         }
-        return NSMakeRect(x, 0, item.isBubbled ? item.bubbleFrame.width : max(item.contentSize.width - x, comments.size(true).width + 10), ChatRowItem.channelCommentsBubbleHeight)
+        let rect = NSMakeRect(x, 0, item.isBubbled ? item.bubbleFrame.width : max(item.contentSize.width - x, comments.size(true).width + 10), ChatRowItem.channelCommentsBubbleHeight)
+        if channelCommentsInRow(item) {
+            return rect.offsetBy(dx: item.bubbleFrame.minX, dy: item.bubbleFrame.maxY - rect.height)
+        }
+        return rect
+    }
+
+    // MATTERMOST: in the list layout the replies sit under the content in the row itself: an own post's bubble view
+    // is on the right, and the bubble view (as wide as the content) would clip the repliers.
+    private func channelCommentsInRow(_ item: ChatRowItem) -> Bool {
+        return MattermostBackend.isEnabled && !item.isBubbled
     }
     public func channelCommentsOverlayFrame(_ item: ChatRowItem) -> CGRect {
         guard let commentsData = item.commentsBubbleDataOverlay else {
@@ -1627,19 +1639,27 @@ public class ChatRowView: TableRowView, Notifable, MultipleSelectable, RevealTab
             rect.origin.x -= 8
             rect.origin.y -= 8
         }
+        // MATTERMOST: an own post's replies sit on the left of the content (channel posts are never outgoing).
+        if MattermostBackend.isEnabled, !item.isIncoming {
+            rect.origin.x = self.cachedContentFrame(item).minX - size.width - (rect.minX - rightFrame.maxX)
+        }
         return rect
     }
     
     public func fillChannelComments(_ item: ChatRowItem, animated: Bool) {
         if let commentsBubbleData = item.commentsBubbleData {
             let current: ChannelCommentsBubbleControl
+            let parent: NSView = channelCommentsInRow(item) ? rowView : bubbleView
             if let channelCommentsBubbleControl = self.channelCommentsBubbleControl {
                 current = channelCommentsBubbleControl
+                if current.superview !== parent {
+                    parent.addSubview(current)
+                }
             } else {
                 current = ChannelCommentsBubbleControl(frame: NSMakeRect(0, 0, item.bubbleFrame.width, ChatRowItem.channelCommentsBubbleHeight))
                                 
                 self.channelCommentsBubbleControl = current
-                bubbleView.addSubview(current)
+                parent.addSubview(current)
             }
             current.update(data: commentsBubbleData, size: channelCommentsBubbleFrame(item).size, animated: animated)
         } else {
@@ -1656,7 +1676,8 @@ public class ChatRowView: TableRowView, Notifable, MultipleSelectable, RevealTab
                 current = ChannelCommentsSmallControl(frame: CGRect(origin: .zero, size: data.size(false, true)))
                 current.set(background: item.presentation.chatServiceItemColor, for: .Normal)
                 
-                current.change(opacity: 0, animated: animated)
+                // MATTERMOST: visible without hovering (`updateMouse`).
+                current.change(opacity: MattermostBackend.isEnabled && item.chatInteraction.presentation.state != .selecting ? 1 : 0, animated: animated)
                 self.channelCommentsBubbleSmallControl = current
                 rowView.addSubview(current)
             }
