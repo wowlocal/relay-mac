@@ -62,12 +62,14 @@ public func userPresenceText(_ presence: TelegramUserPresence, timeDifference: T
         let text: String
         switch status {
         case .away:
-            text = "away"
+            text = strings().relayPresenceAway
         case .doNotDisturb:
             if let until = presence.mattermostStatusUntil, until > timestamp {
-                text = "do not disturb until " + DateFormatter.localizedString(from: Date(timeIntervalSince1970: Double(until)), dateStyle: .none, timeStyle: .short)
+                let date = Date(timeIntervalSince1970: Double(until))
+                let today = Calendar.current.isDate(date, inSameDayAs: Date(timeIntervalSince1970: Double(timestamp)))
+                text = strings().relayPresenceDoNotDisturbUntil(DateFormatter.localizedString(from: date, dateStyle: today ? .none : .medium, timeStyle: .short))
             } else {
-                text = "do not disturb"
+                text = strings().relayPresenceDoNotDisturb
             }
         }
         return (text, false, customTheme?.grayTextColor ?? theme.colors.grayText)

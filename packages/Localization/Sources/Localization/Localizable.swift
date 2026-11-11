@@ -7,6 +7,11 @@ import Foundation
 
 // swiftlint:disable identifier_name line_length type_body_length
 public final class L10n {
+  public static var relayPresenceAway: String { return L10n.tr("Localizable", "Relay.Presence.Away") }
+  public static var relayPresenceDoNotDisturb: String { return L10n.tr("Localizable", "Relay.Presence.DoNotDisturb") }
+  public static func relayPresenceDoNotDisturbUntil(_ p1: String) -> String {
+    return L10n.tr("Localizable", "Relay.Presence.DoNotDisturbUntil", p1)
+  }
   /// •
   public static var bullet: String  { return L10n.tr("Localizable", "bullet") }
   /// %1$@ sent an invoice for %3$@ to the group %2$@
