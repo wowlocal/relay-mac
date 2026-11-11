@@ -1303,7 +1303,8 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
     
     private func updatePeerPresence() {
         if let sharedApplicationContextValue = sharedApplicationContextValue {
-            let isOnline = NSApp.isActive && NSApp.isRunning && !NSApp.isHidden && !sharedApplicationContextValue.sharedWakeupManager.isSleeping && !sharedApplicationContextValue.notificationManager._lockedValue.screenLock && !sharedApplicationContextValue.notificationManager._lockedValue.passcodeLock && SystemIdleTime() < 30
+            let isForeground = MattermostBackend.isEnabled || (NSApp.isActive && !NSApp.isHidden)
+            let isOnline = isForeground && NSApp.isRunning && !sharedApplicationContextValue.sharedWakeupManager.isSleeping && !sharedApplicationContextValue.notificationManager._lockedValue.screenLock && !sharedApplicationContextValue.notificationManager._lockedValue.passcodeLock && SystemIdleTime() < 30
             
             
             presentAccountStatus.set(.single(isOnline) |> then(.single(isOnline) |> delay(50, queue: Queue.concurrentBackgroundQueue())) |> restart)

@@ -58,7 +58,20 @@ public enum RelativeUserPresenceLastSeen {
 
 
 public func userPresenceText(_ presence: TelegramUserPresence, timeDifference: TimeInterval, relativeTo timestamp: Int32, expanded: Bool = false, customTheme: UserPresenceColors? = nil) -> (String, Bool, NSColor) {
-
+    if let status = presence.mattermostStatus {
+        let text: String
+        switch status {
+        case .away:
+            text = "away"
+        case .doNotDisturb:
+            if let until = presence.mattermostStatusUntil, until > timestamp {
+                text = "do not disturb until " + DateFormatter.localizedString(from: Date(timeIntervalSince1970: Double(until)), dateStyle: .none, timeStyle: .short)
+            } else {
+                text = "do not disturb"
+            }
+        }
+        return (text, false, customTheme?.grayTextColor ?? theme.colors.grayText)
+    }
     switch presence.status {
     case .none:
         return (strings().peerStatusLongTimeAgo, false, customTheme?.grayTextColor ?? theme.colors.grayText)

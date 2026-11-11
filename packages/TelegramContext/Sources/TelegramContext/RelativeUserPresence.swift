@@ -12,6 +12,9 @@ public enum RelativeUserPresenceStatus {
 }
 
 public func relativeUserPresenceStatus(_ presence: TelegramUserPresence, timeDifference: TimeInterval, relativeTo timestamp: Int32) -> RelativeUserPresenceStatus {
+    if presence.mattermostStatus != nil {
+        return .recently
+    }
     switch presence.status {
     case .none:
         return .offline
