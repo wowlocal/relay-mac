@@ -75,7 +75,15 @@ public class Language : Equatable {
     public init (languageCode:String, customPluralizationCode: String?, strings:[String: String]) {
         self.languageCode = languageCode
         self.customPluralizationCode = customPluralizationCode
-        self.strings = strings
+        if languageCode.lowercased().split(whereSeparator: { $0 == "-" || $0 == "_" }).first == "ru" {
+            self.strings = strings.merging([
+                "Relay.Presence.Away": "отошёл",
+                "Relay.Presence.DoNotDisturb": "не беспокоить",
+                "Relay.Presence.DoNotDisturbUntil": "не беспокоить до %@"
+            ], uniquingKeysWith: { current, _ in current })
+        } else {
+            self.strings = strings
+        }
     }
 }
 
