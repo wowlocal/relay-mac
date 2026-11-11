@@ -1162,7 +1162,7 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
             var refreshStoryPeerIds:[PeerId] = []
             var receiptPeerIds: [PeerId] = []
             self?.genericView.tableView.enumerateVisibleItems(with: { item in
-                if let item = item as? ChatListRowItem { receiptPeerIds.append(item.peerId) }
+                if let item = item as? ChatListRowItem, let peerId = item.peerId { receiptPeerIds.append(peerId) }
                 if let item = item as? ChatListRowItem, let peer = item.peer as? TelegramUser, !item.isContact {
                     refreshStoryPeerIds.append(peer.id)
                 }
