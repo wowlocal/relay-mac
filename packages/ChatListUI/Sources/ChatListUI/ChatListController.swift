@@ -1168,7 +1168,10 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
                 }
                 return true
             })
-            mattermostChatListVisible(accountPeerId: context.peerId, peerIds: receiptPeerIds)
+            self?.receiptPeerIds = receiptPeerIds
+            if self?.receiptVisible == true {
+                mattermostChatListVisible(accountPeerId: context.peerId, peerIds: receiptPeerIds)
+            }
             context.account.viewTracker.refreshStoryStatsForPeerIds(peerIds: refreshStoryPeerIds)
 
         }))
@@ -1588,8 +1591,13 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
         }
         scrollToTop()
     }
+    private var receiptPeerIds: [PeerId] = []
+    private var receiptVisible = false
+
     public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        receiptVisible = true
+        mattermostChatListVisible(accountPeerId: context.peerId, peerIds: receiptPeerIds)
         
         
         subContext?.load(force: true)
@@ -1880,6 +1888,8 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
     
     public override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        receiptVisible = false
+        mattermostChatListVisible(accountPeerId: context.peerId, peerIds: [])
         context.window.removeAllHandlers(for: self)
         context.window.removeAllHandlers(for: genericView.tableView)
         

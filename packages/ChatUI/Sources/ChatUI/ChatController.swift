@@ -10133,6 +10133,10 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
     }
     public override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        if receiptHistoryVisible {
+            receiptHistoryVisible = false
+            mattermostChatHistoryBlurred(accountPeerId: context.peerId, peerId: chatLocation.peerId)
+        }
         DispatchQueue.main.async { [weak self] in
             self?.removeCaptureExclusion()
         }
@@ -10186,9 +10190,14 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
     
 
     
+    private var receiptHistoryVisible = false
+
     public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        mattermostChatHistoryFocused(accountPeerId: context.peerId, peerId: chatLocation.peerId)
+        if !receiptHistoryVisible {
+            receiptHistoryVisible = true
+            mattermostChatHistoryFocused(accountPeerId: context.peerId, peerId: chatLocation.peerId)
+        }
 
         isPushedGlobalBackground = true
         updateBubblesBackButton()
