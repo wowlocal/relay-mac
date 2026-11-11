@@ -1699,7 +1699,6 @@
 		9F0BCD9E2087BABC001D8D8A /* Sparkle.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Sparkle.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		9F0E6F77203ED1380086699C /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = System/Library/Frameworks/AppKit.framework; sourceTree = SDKROOT; };
 		9F0F8E81226DCD1C00A97F6A /* OpmizeDatabaseView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpmizeDatabaseView.swift; sourceTree = "<group>"; };
-		9F13CCE22006719400ECF301 /* ru */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
 		9F13CCE3200671AF00ECF301 /* uk */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = uk; path = uk.lproj/Localizable.strings; sourceTree = "<group>"; };
 		9F13EE182100B6DA00562E53 /* Contacts.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Contacts.framework; path = System/Library/Frameworks/Contacts.framework; sourceTree = SDKROOT; };
 		9F147F7B2231543800D71BD1 /* PeerUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeerUtils.swift; sourceTree = "<group>"; };
@@ -4751,7 +4750,6 @@
 				C21656CC1EE1CC760041A6BA /* it */,
 				C21656CD1EE1CC7C0041A6BA /* de */,
 				C21656CE1EE1CC830041A6BA /* es */,
-				9F13CCE22006719400ECF301 /* ru */,
 				9F13CCE3200671AF00ECF301 /* uk */,
 			);
 			name = Localizable.strings;
