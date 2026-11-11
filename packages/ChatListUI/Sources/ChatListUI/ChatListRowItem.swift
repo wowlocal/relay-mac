@@ -401,7 +401,7 @@ public class ChatListRowItem: TableRowItem {
             }
             if let readState = readState {
                 if let message = message {
-                    return readState.isOutgoingMessageIndexRead(MessageIndex(message))
+                    return (!MattermostBackend.isEnabled || message.mattermostReadReceiptEligible) && readState.isOutgoingMessageIndexRead(MessageIndex(message))
                 }
             }
         }

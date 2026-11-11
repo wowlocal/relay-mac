@@ -1285,7 +1285,7 @@ public func messageEntries(_ messagesEntries: [MessageHistoryEntry], location: C
         
         
         var isRead = entry.isRead
-        if !message.flags.contains(.Incoming) {
+        if !MattermostBackend.isEnabled && !message.flags.contains(.Incoming) {
             if hasIncomingAfter[i] {
                 isRead = true
             }
@@ -1293,6 +1293,9 @@ public func messageEntries(_ messagesEntries: [MessageHistoryEntry], location: C
         
         if let customThreadOutgoingReadState = customThreadOutgoingReadState {
             isRead = customThreadOutgoingReadState >= message.id
+        }
+        if MattermostBackend.isEnabled && !message.mattermostReadReceiptEligible {
+            isRead = false
         }
         
         if let customChannelDiscussionReadState = customChannelDiscussionReadState {
@@ -1565,4 +1568,3 @@ public func messageEntries(_ messagesEntries: [MessageHistoryEntry], location: C
 
     return sorted
 }
-

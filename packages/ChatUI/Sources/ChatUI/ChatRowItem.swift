@@ -2163,7 +2163,7 @@ public class ChatRowItem: TableRowItem {
             }
             
             
-            if let peer = coreMessageMainPeer(message) as? TelegramUser, peer.botInfo != nil || peer.id == context.peerId {
+            if !MattermostBackend.isEnabled, let peer = coreMessageMainPeer(message) as? TelegramUser, peer.botInfo != nil || peer.id == context.peerId {
                 if !peer.flags.contains(.isSupport) {
                     self.isRead = true
                 }
