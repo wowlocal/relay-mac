@@ -1304,6 +1304,8 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
     private func updatePeerPresence() {
         if let sharedApplicationContextValue = sharedApplicationContextValue {
             let isForeground = MattermostBackend.isEnabled || (NSApp.isActive && !NSApp.isHidden)
+            let receiptVisible = !NSApp.isHidden && !sharedApplicationContextValue.sharedWakeupManager.isSleeping && !sharedApplicationContextValue.notificationManager._lockedValue.screenLock && !sharedApplicationContextValue.notificationManager._lockedValue.passcodeLock && NSApp.windows.contains { $0.isVisible && !$0.isMiniaturized && $0.occlusionState.contains(.visible) }
+            MattermostSync.updateReceiptDisplayVisibility(visible: receiptVisible)
             let isOnline = isForeground && NSApp.isRunning && !sharedApplicationContextValue.sharedWakeupManager.isSleeping && !sharedApplicationContextValue.notificationManager._lockedValue.screenLock && !sharedApplicationContextValue.notificationManager._lockedValue.passcodeLock && SystemIdleTime() < 30
             
             

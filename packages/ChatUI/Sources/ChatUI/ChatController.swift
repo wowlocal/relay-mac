@@ -10188,6 +10188,7 @@ open class ChatController<Context: AccountContextProtocol>: TelegramGenericViewC
     
     public override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        mattermostChatHistoryFocused(accountPeerId: context.peerId, peerId: chatLocation.peerId)
 
         isPushedGlobalBackground = true
         updateBubblesBackButton()
