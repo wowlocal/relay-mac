@@ -1160,12 +1160,15 @@ public class ChatListController<Context: AccountContextProtocol> : PeersListCont
         genericView.tableView.addScroll(listener: TableScrollListener(dispatchWhenVisibleRangeUpdated: true, { [weak self] scroll in
            
             var refreshStoryPeerIds:[PeerId] = []
+            var receiptPeerIds: [PeerId] = []
             self?.genericView.tableView.enumerateVisibleItems(with: { item in
+                if let item = item as? ChatListRowItem { receiptPeerIds.append(item.peerId) }
                 if let item = item as? ChatListRowItem, let peer = item.peer as? TelegramUser, !item.isContact {
                     refreshStoryPeerIds.append(peer.id)
                 }
                 return true
             })
+            mattermostChatListVisible(accountPeerId: context.peerId, peerIds: receiptPeerIds)
             context.account.viewTracker.refreshStoryStatsForPeerIds(peerIds: refreshStoryPeerIds)
 
         }))
