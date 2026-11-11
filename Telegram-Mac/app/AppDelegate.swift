@@ -1793,6 +1793,27 @@ extension AppDelegate {
             NSApp.activate(ignoringOtherApps: true)
             completion(true, nil, [:])
         })
+        RelayDebugRemote.register("capture-view", { [weak self] command, completion in
+            guard let view = self?.window.contentView, let path = command["path"] else {
+                completion(false, "missing view or path", [:])
+                return
+            }
+            view.layoutSubtreeIfNeeded()
+            view.displayIfNeeded()
+            guard let bitmap = view.bitmapImageRepForCachingDisplay(in: view.bounds) else {
+                completion(false, "cannot create view bitmap", [:])
+                return
+            }
+            view.cacheDisplay(in: view.bounds, to: bitmap)
+            guard let data = bitmap.representation(using: .png, properties: [:]) else {
+                completion(false, "cannot encode view bitmap", [:])
+                return
+            }
+            do {
+                try data.write(to: URL(fileURLWithPath: path), options: .atomic)
+                completion(true, nil, ["path": path, "width": bitmap.pixelsWide, "height": bitmap.pixelsHigh])
+            } catch { completion(false, String(describing: error), [:]) }
+        })
         RelayDebugRemote.register("snapshot", { _, completion in
             DistributedNotificationCenter.default().postNotificationName(Notification.Name("org.relaychat.RelayMac.debug.snapshot"), object: nil, userInfo: nil, deliverImmediately: true)
             completion(true, nil, [:])
