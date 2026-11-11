@@ -371,7 +371,7 @@ public class ChatListRowItem: TableRowItem {
     }
     public var isRead: Bool {
         guard let message else { return false }
-        return message.outgoingReadState(confirmed: readState?.isOutgoingMessageRead(message) ?? false, legacy: self.legacyIsRead, ownPeerId: context.peerId)
+        return message.outgoingReadState(confirmed: readState?.isOutgoingMessageRead(EngineMessage(message)) ?? false, legacy: self.legacyIsRead, ownPeerId: context.peerId)
     }
 
     private var legacyIsRead: Bool {
@@ -406,7 +406,7 @@ public class ChatListRowItem: TableRowItem {
             }
             if let readState = readState {
                 if let message = message {
-                    return readState.isOutgoingMessageRead(message)
+                    return readState.isOutgoingMessageRead(EngineMessage(message))
                 }
             }
         }
