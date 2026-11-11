@@ -465,7 +465,7 @@ class AppDelegate: NSResponder, NSApplicationDelegate, NSUserNotificationCenterD
 
         telegramUIDeclareEncodables()
         mattermostDeclareEncodables()
-        MattermostSessionKeychain.service = "org.relaychat.mattermost.session." + ApiEnvironment.prefix
+        MattermostSessionKeychain.service = "org.relaychat.mattermost.session." + ApiEnvironment.mattermostKeychainScope
         relayFetchResource = { postbox, resource in
             return mattermostFetchResource(postbox: postbox, resource: resource)
         }
@@ -1788,6 +1788,11 @@ private var relayDebugLastPeerId: PeerId?
 extension AppDelegate {
     func installRelayDebugRemote(directory: String) {
         RelayDebugRemote.install(directory: directory)
+        RelayDebugRemote.register("activate", { [weak self] _, completion in
+            self?.window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            completion(true, nil, [:])
+        })
         RelayDebugRemote.register("snapshot", { _, completion in
             DistributedNotificationCenter.default().postNotificationName(Notification.Name("org.relaychat.RelayMac.debug.snapshot"), object: nil, userInfo: nil, deliverImmediately: true)
             completion(true, nil, [:])
@@ -2514,6 +2519,14 @@ extension AppDelegate {
                 extra["input"] = presentation.interfaceState.inputState.inputText
                 extra["state"] = "\(presentation.state)"
                 extra["firstResponder"] = chat.window?.firstResponder.map { String(describing: type(of: $0)) } ?? NSNull()
+                var readMarks: [[String: Any]] = []
+                chat.genericView.tableView.enumerateItems { item in
+                    if let item = item as? ChatRowItem, let message = item.message {
+                        readMarks.append(["id": message.id.id, "text": String(message.text.prefix(100)), "read": item.isRead, "incoming": message.flags.contains(.Incoming)])
+                    }
+                    return true
+                }
+                extra["readMarks"] = readMarks
             }
             completion(true, nil, extra)
         })

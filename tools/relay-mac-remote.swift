@@ -17,7 +17,8 @@ for argument in CommandLine.arguments.dropFirst() {
 if command["password"] == nil, let password = ProcessInfo.processInfo.environment["RELAY_REMOTE_PASSWORD"] {
     command["password"] = password
 }
-let resultPath = NSHomeDirectory() + "/Library/Application Support/org.relaychat.RelayMac/debug/relay-debug/result.json"
+let rootPath = ProcessInfo.processInfo.environment["RELAY_DEBUG_DATA_PATH"] ?? NSHomeDirectory() + "/Library/Application Support/org.relaychat.RelayMac/debug"
+let resultPath = rootPath + "/relay-debug/result.json"
 let data = try! JSONSerialization.data(withJSONObject: command)
 DistributedNotificationCenter.default().postNotificationName(Notification.Name("org.relaychat.RelayMac.debug.command"), object: String(data: data, encoding: .utf8), userInfo: nil, deliverImmediately: true)
 let deadline = Date().addingTimeInterval(Double(command["timeout"] ?? "10") ?? 10)

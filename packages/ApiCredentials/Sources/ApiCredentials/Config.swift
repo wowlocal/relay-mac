@@ -18,6 +18,13 @@ public final class ApiEnvironment {
     
     
     public static var containerURL: URL? {
+        #if DEBUG
+        if let path = ProcessInfo.processInfo.environment["RELAY_DEBUG_DATA_PATH"], !path.isEmpty {
+            let url = URL(fileURLWithPath: path, isDirectory: true)
+            try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+            return url
+        }
+        #endif
         let appGroupName = ApiEnvironment.group
         let containerUrl = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName)?.appendingPathComponent(prefix)
         if let containerUrl = containerUrl {
@@ -57,8 +64,30 @@ public final class ApiEnvironment {
     }
     
     public static var keychainScope: String {
+        #if DEBUG
+        if let scope = debugDataScope {
+            return "relay.debug." + scope
+        }
+        #endif
         return "relay." + prefix
     }
+
+    public static var mattermostKeychainScope: String {
+        #if DEBUG
+        if let scope = debugDataScope {
+            return "debug." + scope
+        }
+        #endif
+        return prefix
+    }
+
+    #if DEBUG
+    private static var debugDataScope: String? {
+        guard let path = ProcessInfo.processInfo.environment["RELAY_DEBUG_DATA_PATH"], !path.isEmpty else { return nil }
+        let hash = path.utf8.reduce(UInt64(0xcbf29ce484222325)) { ($0 ^ UInt64($1)) &* 0x100000001b3 }
+        return String(hash, radix: 16)
+    }
+    #endif
 
     public static var group: String {
         return teamId + "." + bundleId
@@ -101,6 +130,3 @@ public final class ApiEnvironment {
     }
     
 }
-
-
-
