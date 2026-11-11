@@ -1804,7 +1804,13 @@ extension AppDelegate {
                 completion(false, "cannot create view bitmap", [:])
                 return
             }
-            view.cacheDisplay(in: view.bounds, to: bitmap)
+            if command["layers"] == "1", let layer = view.layer, let context = NSGraphicsContext(bitmapImageRep: bitmap) {
+                let transform = context.cgContext.ctm
+                context.cgContext.scaleBy(x: CGFloat(bitmap.pixelsWide) / view.bounds.width / abs(transform.a), y: CGFloat(bitmap.pixelsHigh) / view.bounds.height / abs(transform.d))
+                layer.render(in: context.cgContext)
+            } else {
+                view.cacheDisplay(in: view.bounds, to: bitmap)
+            }
             guard let data = bitmap.representation(using: .png, properties: [:]) else {
                 completion(false, "cannot encode view bitmap", [:])
                 return
