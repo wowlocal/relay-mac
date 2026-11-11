@@ -1285,18 +1285,11 @@ public func messageEntries(_ messagesEntries: [MessageHistoryEntry], location: C
         
         
         var isRead = entry.isRead
-        if !MattermostBackend.isEnabled && !message.flags.contains(.Incoming) {
-            if hasIncomingAfter[i] {
-                isRead = true
-            }
-        }
         
         if let customThreadOutgoingReadState = customThreadOutgoingReadState {
             isRead = customThreadOutgoingReadState >= message.id
         }
-        if MattermostBackend.isEnabled && !message.mattermostReadReceiptEligible {
-            isRead = false
-        }
+        isRead = message.outgoingReadState(confirmed: isRead, legacy: isRead || (!message.flags.contains(.Incoming) && hasIncomingAfter[i]))
         
         if let customChannelDiscussionReadState = customChannelDiscussionReadState {
             attibuteLoop: for i in 0 ..< message.attributes.count {

@@ -369,7 +369,12 @@ public class ChatListRowItem: TableRowItem {
         }
         return false
     }
-    public var isRead:Bool {
+    public var isRead: Bool {
+        guard let message else { return false }
+        return message.outgoingReadState(confirmed: readState?.isOutgoingMessageRead(message) ?? false, legacy: self.legacyIsRead, ownPeerId: context.peerId)
+    }
+
+    private var legacyIsRead: Bool {
         switch mode {
         case let .topic(_, data):
             if let message = message {
@@ -401,7 +406,7 @@ public class ChatListRowItem: TableRowItem {
             }
             if let readState = readState {
                 if let message = message {
-                    return (!MattermostBackend.isEnabled || message.mattermostReadReceiptEligible) && readState.isOutgoingMessageIndexRead(MessageIndex(message))
+                    return readState.isOutgoingMessageRead(message)
                 }
             }
         }
